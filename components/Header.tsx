@@ -1,5 +1,7 @@
 'use client';
 
+import Image from 'next/image';
+
 export default function Header() {
   return (
     <header className="bg-primary text-primary-foreground shadow-md">
@@ -8,13 +10,20 @@ export default function Header() {
           {/* Left: Logo and Text */}
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 md:w-12 md:h-12 bg-primary-foreground rounded-lg flex items-center justify-center">
-              <span className="font-bold text-primary text-lg md:text-xl">T</span>
+              <Image
+                src="/thapar-logo.jpeg"
+                alt="Thapar Institute logo"
+                width={48}
+                height={48}
+                className="w-8 h-8 md:w-10 md:h-10 object-contain"
+                priority
+              />
             </div>
             <div>
               <h1 className="text-base md:text-lg font-bold leading-tight">
                 Thapar Institute of Engineering & Technology
               </h1>
-              <p className="text-xs md:text-sm opacity-90">Outreach Payment Portal</p>
+              <p className="text-xs md:text-sm opacity-90">Payment Portal</p>
             </div>
           </div>
 

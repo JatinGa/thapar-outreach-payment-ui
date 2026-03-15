@@ -13,7 +13,7 @@ export default function Home() {
     {
       id: 'accommodation-food',
       title: 'Accommodation + Food',
-      description: 'Includes stay and meal plan during the event',
+      description: 'Includes accommodation and meals for 17–19 April. Food services will be provided by Sodexo.',
       icon: UtensilsCrossed,
       price: '₹5,999',
       buttonText: 'Proceed to Payment',
@@ -21,7 +21,7 @@ export default function Home() {
     {
       id: 'accommodation-only',
       title: 'Accommodation Only',
-      description: 'Stay included, meals not included',
+      description: 'Includes accommodation for 17–19 April. Meals are not included in this plan.',
       icon: Bed,
       price: '₹3,499',
       buttonText: 'Proceed to Payment',
@@ -43,10 +43,10 @@ export default function Home() {
           {/* Title Section */}
           <div className="text-center mb-12">
             <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-4">
-              Outreach Accommodation Payment
+              Accommodation Payment
             </h1>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Select your accommodation preference for the outreach program.
+              Please select your preferred accommodation package for 17–19 April. Meal services, where applicable, will be provided by Sodexo.
             </p>
           </div>
 
