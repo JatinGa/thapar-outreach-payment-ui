@@ -15,6 +15,7 @@ interface PaymentCardProps {
 }
 
 export default function PaymentCard({
+  id,
   title,
   description,
   icon: Icon,
