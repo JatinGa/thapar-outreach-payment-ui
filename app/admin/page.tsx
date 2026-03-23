@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getEvents, deleteEvent, addEvent, Event, updateEvent, deleteAccommodationOption, addAccommodationOption, AccommodationOption } from '@/lib/events';
+import { getEvents, deleteEvent, addEvent, Event, updateEvent, deleteAccommodationOption, addAccommodationOption, updateAccommodationOption, AccommodationOption } from '@/lib/events';
 import { Button } from '@/components/ui/button';
 import { Plus, Edit2, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
@@ -14,6 +14,7 @@ function AdminPageContent() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isAccommodationFormOpen, setIsAccommodationFormOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<Event | null>(null);
+  const [editingAccommodation, setEditingAccommodation] = useState<AccommodationOption | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -71,6 +72,19 @@ function AdminPageContent() {
     setEvents(events.map(e => e.id === selectedEvent.id ? updatedEvent : e));
     setSelectedEvent(updatedEvent);
     setIsAccommodationFormOpen(false);
+    setEditingAccommodation(null);
+  };
+
+  const handleUpdateAccommodation = (optionData: Omit<AccommodationOption, 'id'>) => {
+    if (!selectedEvent || !editingAccommodation) return;
+
+    const updatedEvent = updateAccommodationOption(selectedEvent.id, editingAccommodation.id, optionData);
+    if (!updatedEvent) return;
+
+    setEvents(events.map(e => e.id === selectedEvent.id ? updatedEvent : e));
+    setSelectedEvent(updatedEvent);
+    setIsAccommodationFormOpen(false);
+    setEditingAccommodation(null);
   };
 
   const handleCloseForm = () => {
@@ -198,7 +212,11 @@ function AdminPageContent() {
             {/* Accommodation Options Management */}
             <div className="mb-8">
               <button
-                onClick={() => setSelectedEvent(null)}
+                onClick={() => {
+                  setSelectedEvent(null);
+                  setIsAccommodationFormOpen(false);
+                  setEditingAccommodation(null);
+                }}
                 className="inline-flex items-center gap-2 text-primary hover:text-primary/80 transition-colors mb-6"
               >
                 <ChevronLeft className="w-4 h-4" />
@@ -210,7 +228,10 @@ function AdminPageContent() {
                   <p className="text-muted-foreground mt-1">{selectedEvent.eventDates}</p>
                 </div>
                 <Button
-                  onClick={() => setIsAccommodationFormOpen(!isAccommodationFormOpen)}
+                  onClick={() => {
+                    setEditingAccommodation(null);
+                    setIsAccommodationFormOpen((prev) => !prev);
+                  }}
                   className="bg-primary text-primary-foreground hover:bg-primary/90 gap-2"
                 >
                   <Plus className="w-4 h-4" />
@@ -221,8 +242,12 @@ function AdminPageContent() {
 
             {isAccommodationFormOpen && (
               <AccommodationForm
-                onSubmit={handleAddAccommodation}
-                onCancel={() => setIsAccommodationFormOpen(false)}
+                option={editingAccommodation || undefined}
+                onSubmit={editingAccommodation ? handleUpdateAccommodation : handleAddAccommodation}
+                onCancel={() => {
+                  setIsAccommodationFormOpen(false);
+                  setEditingAccommodation(null);
+                }}
               />
             )}
 
@@ -255,6 +280,18 @@ function AdminPageContent() {
                           <td className="px-6 py-4 text-primary font-semibold">{option.price}</td>
                           <td className="px-6 py-4 text-sm text-muted-foreground capitalize">{option.icon}</td>
                           <td className="px-6 py-4 flex items-center gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setEditingAccommodation(option);
+                                setIsAccommodationFormOpen(true);
+                              }}
+                              className="gap-2"
+                            >
+                              <Edit2 className="w-4 h-4" />
+                              Edit
+                            </Button>
                             <Button
                               variant="destructive"
                               size="sm"

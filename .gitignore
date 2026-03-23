@@ -15,3 +15,8 @@ next.user-config.*
 node_modules/
 .next/
 .DS_Store
+
+# Local backend clone and notes
+backend/
+backen/
+FRONTEND_INTEGRATION.md
