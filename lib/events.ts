@@ -35,6 +35,25 @@ function notifyEventsUpdated() {
   }
 }
 
+function cloneDefaultEvent(event: Event): Event {
+  return {
+    ...event,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    accommodationOptions: event.accommodationOptions.map((option) => ({ ...option })),
+  };
+}
+
+function ensureDefaultEventsPresent(events: Event[]): Event[] {
+  const hasHelix = events.some(
+    (event) => event.id === 'helix-2024' || event.name.trim().toLowerCase() === 'helix'
+  );
+
+  if (hasHelix) return events;
+
+  return [cloneDefaultEvent(DEFAULT_EVENTS[0]), ...events];
+}
+
 function normalizeEvents(raw: unknown): Event[] {
   if (!Array.isArray(raw)) return DEFAULT_EVENTS;
 
@@ -114,7 +133,9 @@ function normalizeEvents(raw: unknown): Event[] {
     })
     .filter((event): event is Event => event !== null);
 
-  return normalized.length > 0 ? normalized : DEFAULT_EVENTS;
+  if (normalized.length === 0) return DEFAULT_EVENTS.map(cloneDefaultEvent);
+
+  return ensureDefaultEventsPresent(normalized);
 }
 
 const DEFAULT_EVENTS: Event[] = [
@@ -129,14 +150,14 @@ const DEFAULT_EVENTS: Event[] = [
         id: 'helix-accommodation-food',
         title: 'Accommodation + Food',
         description: 'Includes accommodation and meals for 17–19 April. Food services will be provided by Sodexo.',
-        price: '₹5,999',
+        price: '₹1,200',
         icon: 'utensils',
       },
       {
         id: 'helix-accommodation-only',
         title: 'Accommodation Only',
         description: 'Includes accommodation for 17–19 April. Meals are not included in this plan.',
-        price: '₹3,499',
+        price: '₹500',
         icon: 'bed',
       },
     ],
@@ -148,23 +169,42 @@ const DEFAULT_EVENTS: Event[] = [
 // Get all events
 export function getEvents(): Event[] {
   if (typeof window === 'undefined') return DEFAULT_EVENTS; // Server-side fallback
-  
-  const stored = localStorage.getItem(EVENTS_STORAGE_KEY);
-  if (!stored) {
-    // Initialize with defaults if not present
-    localStorage.setItem(EVENTS_STORAGE_KEY, JSON.stringify(DEFAULT_EVENTS));
-    return DEFAULT_EVENTS;
-  }
-  
+
   try {
+    const stored = localStorage.getItem(EVENTS_STORAGE_KEY);
+    if (!stored) {
+      // Initialize with defaults if not present
+      localStorage.setItem(EVENTS_STORAGE_KEY, JSON.stringify(DEFAULT_EVENTS));
+      return DEFAULT_EVENTS;
+    }
+
     const parsed = JSON.parse(stored);
     const normalized = normalizeEvents(parsed);
     localStorage.setItem(EVENTS_STORAGE_KEY, JSON.stringify(normalized));
     return normalized;
   } catch {
-    localStorage.setItem(EVENTS_STORAGE_KEY, JSON.stringify(DEFAULT_EVENTS));
+    try {
+      localStorage.setItem(EVENTS_STORAGE_KEY, JSON.stringify(DEFAULT_EVENTS));
+    } catch {
+      // localStorage may be unavailable in some browser privacy modes
+    }
     return DEFAULT_EVENTS;
   }
+}
+
+export function resetEventsToDefault(): Event[] {
+  const defaults = DEFAULT_EVENTS.map(cloneDefaultEvent);
+
+  if (typeof window !== 'undefined') {
+    try {
+      localStorage.setItem(EVENTS_STORAGE_KEY, JSON.stringify(defaults));
+      notifyEventsUpdated();
+    } catch {
+      // ignore storage errors in restricted browser modes
+    }
+  }
+
+  return defaults;
 }
 
 // Add a new event

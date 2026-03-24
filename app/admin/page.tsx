@@ -1,13 +1,28 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getEvents, deleteEvent, addEvent, Event, updateEvent, deleteAccommodationOption, addAccommodationOption, updateAccommodationOption, AccommodationOption } from '@/lib/events';
+import dynamic from 'next/dynamic';
+import { getEvents, deleteEvent, addEvent, Event, updateEvent, deleteAccommodationOption, addAccommodationOption, updateAccommodationOption, resetEventsToDefault, AccommodationOption } from '@/lib/events';
 import { Button } from '@/components/ui/button';
 import { Plus, Edit2, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
-import EventForm from '@/components/admin/EventForm';
-import AccommodationForm from '@/components/admin/AccommodationForm';
-import AdminProtect from '@/components/admin/AdminProtect';
+
+const EventForm = dynamic(() => import('@/components/admin/EventForm'), {
+  loading: () => <div className="rounded-lg border border-border p-6 text-sm text-muted-foreground">Loading form...</div>,
+});
+
+const AccommodationForm = dynamic(() => import('@/components/admin/AccommodationForm'), {
+  loading: () => <div className="rounded-lg border border-border p-6 text-sm text-muted-foreground">Loading form...</div>,
+});
+
+const AdminProtect = dynamic(() => import('@/components/admin/AdminProtect'), {
+  ssr: false,
+  loading: () => (
+    <div className="min-h-screen bg-background flex items-center justify-center">
+      <p className="text-muted-foreground">Loading...</p>
+    </div>
+  ),
+});
 
 function AdminPageContent() {
   const [events, setEvents] = useState<Event[]>([]);
@@ -20,8 +35,11 @@ function AdminPageContent() {
 
   // Load events on mount
   useEffect(() => {
-    setEvents(getEvents());
-    setLoading(false);
+    try {
+      setEvents(getEvents());
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   const handleAddEvent = (eventData: Omit<Event, 'id' | 'createdAt' | 'updatedAt'>) => {
@@ -92,6 +110,18 @@ function AdminPageContent() {
     setEditingEvent(null);
   };
 
+  const handleResetEvents = () => {
+    if (!confirm('This will replace current local events with default events. Continue?')) return;
+
+    const defaults = resetEventsToDefault();
+    setEvents(defaults);
+    setSelectedEvent(null);
+    setIsFormOpen(false);
+    setIsAccommodationFormOpen(false);
+    setEditingEvent(null);
+    setEditingAccommodation(null);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -112,13 +142,22 @@ function AdminPageContent() {
             <h1 className="text-2xl md:text-3xl font-bold">Admin Portal</h1>
           </div>
           {!selectedEvent && (
-            <Button
-              onClick={() => setIsFormOpen(true)}
-              className="bg-primary-foreground text-primary hover:bg-primary-foreground/90 gap-2"
-            >
-              <Plus className="w-4 h-4" />
-              Add Event
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                onClick={handleResetEvents}
+                className="bg-transparent border-primary-foreground/40 text-primary-foreground hover:bg-primary-foreground/10"
+              >
+                Reset Events
+              </Button>
+              <Button
+                onClick={() => setIsFormOpen(true)}
+                className="bg-primary-foreground text-primary hover:bg-primary-foreground/90 gap-2"
+              >
+                <Plus className="w-4 h-4" />
+                Add Event
+              </Button>
+            </div>
           )}
         </div>
       </div>

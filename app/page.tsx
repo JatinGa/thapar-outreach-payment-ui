@@ -1,11 +1,23 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import dynamic from 'next/dynamic';
 import { Bed, UtensilsCrossed, ChevronRight } from 'lucide-react';
 import Header from '@/components/Header';
-import PaymentCard from '@/components/PaymentCard';
 import Footer from '@/components/Footer';
-import { getEvents, Event } from '@/lib/events';
+import { getEvents, Event, AccommodationOption } from '@/lib/events';
+import { buildInitPayload, getEasebuzzCheckoutUrl, initPayment } from '@/lib/payment';
+
+const PaymentCard = dynamic(() => import('@/components/PaymentCard'), {
+  loading: () => (
+    <div className="bg-card border border-border rounded-xl p-8 shadow-md animate-pulse">
+      <div className="h-8 w-1/2 bg-muted rounded mb-4" />
+      <div className="h-4 w-full bg-muted rounded mb-2" />
+      <div className="h-4 w-4/5 bg-muted rounded mb-6" />
+      <div className="h-10 w-full bg-muted rounded" />
+    </div>
+  ),
+});
 
 const iconMap = {
   utensils: UtensilsCrossed,
@@ -16,6 +28,8 @@ export default function Home() {
   const [events, setEvents] = useState<Event[]>([]);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
+  const [activePaymentOptionId, setActivePaymentOptionId] = useState<string | null>(null);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -28,8 +42,11 @@ export default function Home() {
       });
     };
 
-    refreshEvents();
-    setLoading(false);
+    try {
+      refreshEvents();
+    } finally {
+      setLoading(false);
+    }
 
     window.addEventListener('storage', refreshEvents);
     window.addEventListener('focus', refreshEvents);
@@ -42,15 +59,45 @@ export default function Home() {
     };
   }, []);
 
-  const handlePaymentClick = (optionId: string) => {
-    setSelectedOption(optionId);
-    // This can later be connected to payment microservice API
-    console.log(`Payment initiated for event: ${selectedEvent?.id}, option: ${optionId}`);
+  const handlePaymentClick = async (option: AccommodationOption) => {
+    setSelectedOption(option.id);
+    setPaymentError(null);
+    setActivePaymentOptionId(option.id);
+
+    try {
+      const expectedAmount = Number(option.price.replace(/[^\d]/g, ''));
+      const payload = buildInitPayload(option);
+      const payment = await initPayment(payload);
+
+      if (Number.isFinite(expectedAmount) && payment.originalAmount !== expectedAmount) {
+        setPaymentError(
+          `Amount mismatch: card shows ₹${expectedAmount}, backend returned ₹${payment.originalAmount}. Please update fest pricing in backend admin.`
+        );
+        return;
+      }
+
+      const checkoutUrl = getEasebuzzCheckoutUrl(payment.accessKey, payment.env);
+
+      if (typeof window !== 'undefined') {
+        window.sessionStorage.setItem('lastMerchantOrderId', payment.merchantOrderId);
+        window.location.href = checkoutUrl;
+      }
+    } catch (error) {
+      setPaymentError(error instanceof Error ? error.message : 'Unable to initialize payment.');
+    } finally {
+      setActivePaymentOptionId(null);
+    }
   };
 
   const handleBackToEvents = () => {
     setSelectedEvent(null);
     setSelectedOption(null);
+    setPaymentError(null);
+  };
+
+  const handleOptionCardSelect = (optionId: string) => {
+    setSelectedOption(optionId);
+    setPaymentError(null);
   };
 
   if (loading) {
@@ -145,24 +192,33 @@ export default function Home() {
                   <p className="text-muted-foreground">No accommodation options available for this event.</p>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 mb-12">
-                  {selectedEvent.accommodationOptions.map((option) => {
-                    const IconComponent = iconMap[option.icon];
-                    return (
-                      <PaymentCard
-                        key={option.id}
-                        id={option.id}
-                        title={option.title}
-                        description={option.description}
-                        icon={IconComponent}
-                        price={option.price}
-                        buttonText="Proceed to Payment"
-                        isSelected={selectedOption === option.id}
-                        onPaymentClick={() => handlePaymentClick(option.id)}
-                      />
-                    );
-                  })}
-                </div>
+                <>
+                  {paymentError && (
+                    <div className="mb-6 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+                      {paymentError}
+                    </div>
+                  )}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 mb-12">
+                    {selectedEvent.accommodationOptions.map((option) => {
+                      const IconComponent = iconMap[option.icon];
+                      return (
+                        <PaymentCard
+                          key={option.id}
+                          id={option.id}
+                          title={option.title}
+                          description={option.description}
+                          icon={IconComponent}
+                          price={option.price}
+                          buttonText={activePaymentOptionId === option.id ? 'Starting Payment...' : 'Proceed to Payment'}
+                          isSelected={selectedOption === option.id}
+                          onCardSelect={() => handleOptionCardSelect(option.id)}
+                          onProceedToPayment={() => handlePaymentClick(option)}
+                          isLoading={activePaymentOptionId === option.id}
+                        />
+                      );
+                    })}
+                  </div>
+                </>
               )}
             </>
           )}

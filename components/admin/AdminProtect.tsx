@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
@@ -18,12 +17,14 @@ export default function AdminProtect({ children }: AdminProtectProps) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check if already authenticated in session storage
-    const sessionAuth = sessionStorage.getItem('admin_authenticated');
-    if (sessionAuth === 'true') {
-      setIsAuthenticated(true);
+    try {
+      const sessionAuth = sessionStorage.getItem('admin_authenticated');
+      if (sessionAuth === 'true') {
+        setIsAuthenticated(true);
+      }
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }, []);
 
   const handleLogin = (e: React.FormEvent) => {

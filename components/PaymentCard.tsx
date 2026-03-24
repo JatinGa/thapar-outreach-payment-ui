@@ -11,7 +11,9 @@ interface PaymentCardProps {
   price: string;
   buttonText: string;
   isSelected: boolean;
-  onPaymentClick: () => void;
+  onCardSelect: () => void;
+  onProceedToPayment: () => void;
+  isLoading?: boolean;
 }
 
 export default function PaymentCard({
@@ -22,14 +24,16 @@ export default function PaymentCard({
   price,
   buttonText,
   isSelected,
-  onPaymentClick,
+  onCardSelect,
+  onProceedToPayment,
+  isLoading = false,
 }: PaymentCardProps) {
   return (
     <div
       className={`relative group bg-card rounded-xl p-8 shadow-md hover:shadow-xl transition-all duration-300 border-2 cursor-pointer ${
         isSelected ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'
       }`}
-      onClick={onPaymentClick}
+      onClick={onCardSelect}
     >
       {/* Background gradient effect */}
       <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
@@ -75,8 +79,9 @@ export default function PaymentCard({
         <Button
           onClick={(e) => {
             e.stopPropagation();
-            onPaymentClick();
+            onProceedToPayment();
           }}
+          disabled={isLoading}
           className={`w-full py-3 rounded-lg font-semibold transition-all duration-300 ${
             isSelected
               ? 'bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg'

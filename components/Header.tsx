@@ -9,13 +9,13 @@ export default function Header() {
         <div className="flex items-center justify-between">
           {/* Left: Logo and Text */}
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 md:w-12 md:h-12 bg-primary-foreground rounded-lg flex items-center justify-center">
+            <div className="relative w-10 h-10 md:w-12 md:h-12 bg-primary-foreground rounded-lg overflow-hidden flex items-center justify-center">
               <Image
                 src="/thapar-logo.jpeg"
                 alt="Thapar Institute logo"
-                width={48}
-                height={48}
-                className="w-8 h-8 md:w-10 md:h-10 object-contain"
+                fill
+                sizes="48px"
+                className="object-contain p-1"
                 priority
               />
             </div>
