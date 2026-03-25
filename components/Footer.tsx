@@ -33,7 +33,7 @@ export default function Footer() {
 
           <div className="text-xs md:text-sm text-foreground/70 text-center md:text-left space-y-1">
             <p>Legal Name: Thapar Institute of Engineering and Technology</p>
-            <p>Contact: xxxxx-xxxxx | xxxx@thapar.edu</p>
+            <p>Contact: 98149-56560 | accommodationsthapar@gmail.com</p>
             <p>Address: Bhadson Road, Adarsh Nagar, Patiala, Punjab 147004, India</p>
           </div>
         </div>

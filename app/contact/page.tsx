@@ -24,12 +24,12 @@ export default function ContactPage() {
 
       <section>
         <h2 className="text-xl font-semibold mb-2">Contact Number</h2>
-        <p>+91 93052-67844</p>
+        <p>98149-56560</p>
       </section>
 
       <section>
         <h2 className="text-xl font-semibold mb-2">Email ID</h2>
-        <p>helix@thapar.edu</p>
+        <p>accommodationsthapar@gmail.com</p>
       </section>
 
       <section>
