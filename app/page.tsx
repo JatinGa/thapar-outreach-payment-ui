@@ -46,6 +46,7 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [backendReady, setBackendReady] = useState(false);
   const [loginRedirectUrl, setLoginRedirectUrl] = useState('https://accommodationstiet.shop');
+  const [isAutoRedirecting, setIsAutoRedirecting] = useState(false);
   const [launchContext, setLaunchContext] = useState<{
     origin_user_id: string;
     launch_exp: number;
@@ -56,9 +57,23 @@ export default function Home() {
     const loadFestFromLaunch = async () => {
       const defaultRedirect = process.env.NEXT_PUBLIC_LOGIN_REDIRECT_URL || 'https://accommodationstiet.shop';
 
+      const shouldAutoRedirect = (targetUrl: string): boolean => {
+        if (typeof window === 'undefined') return false;
+        try {
+          const current = new URL(window.location.href);
+          const target = new URL(targetUrl, window.location.origin);
+          return !(current.origin === target.origin && current.pathname === target.pathname);
+        } catch {
+          return true;
+        }
+      };
+
       const redirectToLogin = (url: string, message: string) => {
+        setLoginRedirectUrl(url);
         setPaymentError(message);
-        if (typeof window !== 'undefined') {
+        const canAutoRedirect = shouldAutoRedirect(url);
+        setIsAutoRedirecting(canAutoRedirect);
+        if (typeof window !== 'undefined' && canAutoRedirect) {
           window.setTimeout(() => {
             window.location.href = url;
           }, 1200);
@@ -111,12 +126,7 @@ export default function Home() {
           error instanceof LaunchVerifyError && error.redirectUrl
             ? error.redirectUrl
             : process.env.NEXT_PUBLIC_LOGIN_REDIRECT_URL || 'https://accommodationstiet.shop';
-        setPaymentError(error instanceof Error ? error.message : 'Launch verification failed.');
-        if (typeof window !== 'undefined') {
-          window.setTimeout(() => {
-            window.location.href = fallback;
-          }, 1200);
-        }
+        redirectToLogin(fallback, error instanceof Error ? error.message : 'Launch verification failed.');
       } finally {
         setLoading(false);
       }
@@ -402,7 +412,20 @@ export default function Home() {
               ) : (
                 <div className="text-center py-12 bg-muted rounded-lg">
                   <p className="text-muted-foreground mb-2">Please login from your fest website to continue.</p>
-                  <p className="text-sm text-muted-foreground">Redirecting...</p>
+                  {isAutoRedirecting ? (
+                    <p className="text-sm text-muted-foreground">Redirecting...</p>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        if (typeof window !== 'undefined') {
+                          window.location.href = loginRedirectUrl;
+                        }
+                      }}
+                      className="mt-2 inline-flex items-center gap-2 text-primary hover:text-primary/80 transition-colors"
+                    >
+                      Go to Fest Website
+                    </button>
+                  )}
                 </div>
               )}
             </>
