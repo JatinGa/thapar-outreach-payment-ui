@@ -63,6 +63,18 @@ export default function Home() {
       };
 
       try {
+        const query = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams();
+        const fest_id = query.get('fest_id');
+        const origin_user_id = query.get('origin_user_id');
+        const expParam = query.get('exp');
+        const sig = query.get('sig');
+
+        // Keep homepage and booking flow separate.
+        if (typeof window !== 'undefined' && window.location.pathname === '/' && fest_id && origin_user_id) {
+          window.location.replace(`/booking?${query.toString()}`);
+          return;
+        }
+
         const isHealthy = await checkBackendHealth();
         setBackendReady(isHealthy);
 
@@ -71,13 +83,20 @@ export default function Home() {
           return;
         }
 
-        const query = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams();
-        const fest_id = query.get('fest_id');
-        const origin_user_id = query.get('origin_user_id');
-        const expParam = query.get('exp');
-        const sig = query.get('sig');
-
         if (!fest_id || !origin_user_id || !expParam || !sig) {
+          if (fest_id && origin_user_id) {
+            const fest = await fetchFest(fest_id);
+            setSelectedFest(fest);
+            setLoginRedirectUrl(fest.authorized_url || defaultRedirect);
+            setLaunchContext({
+              origin_user_id,
+              launch_exp: 0,
+              launch_sig: '',
+            });
+            setPaymentError('Secure launch token missing. You can view options, but payment requires opening from fest website login.');
+            return;
+          }
+
           const fests = await fetchFests();
           setPublicFests(fests);
           return;
@@ -137,6 +156,12 @@ export default function Home() {
 
     if (!launchContext) {
       setPaymentError('Session expired. Please login again from your fest website.');
+      setActivePaymentOptionId(null);
+      return;
+    }
+
+    if (!launchContext.launch_exp || !launchContext.launch_sig) {
+      setPaymentError('Secure launch token missing. Please open payment again from your fest website login.');
       setActivePaymentOptionId(null);
       return;
     }
