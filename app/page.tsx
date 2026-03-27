@@ -3,9 +3,10 @@
 import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { Bed, UtensilsCrossed, ChevronRight } from 'lucide-react';
+import { getAllStates, getDistricts } from 'india-state-district';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import { fetchFests, initiatePayment, checkBackendHealth, Fest, BookingDetail } from '@/lib/backend';
+import { fetchFest, initiatePayment, checkBackendHealth, verifyLaunch, LaunchVerifyError, Fest, BookingDetail } from '@/lib/backend';
 
 const PaymentCard = dynamic(() => import('@/components/PaymentCard'), {
   loading: () => (
@@ -33,38 +34,95 @@ const iconMap = {
   bed: Bed,
 };
 
+const INDIAN_STATES = getAllStates();
+
 export default function Home() {
-  const [fests, setFests] = useState<Fest[]>([]);
   const [selectedFest, setSelectedFest] = useState<Fest | null>(null);
   const [selectedOption, setSelectedOption] = useState<AccommodationOption | null>(null);
   const [userDetails, setUserDetails] = useState({ name: '', state: '', district: '' });
+  const [selectedStateCode, setSelectedStateCode] = useState('');
   const [activePaymentOptionId, setActivePaymentOptionId] = useState<string | null>(null);
   const [paymentError, setPaymentError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [backendReady, setBackendReady] = useState(false);
+  const [loginRedirectUrl, setLoginRedirectUrl] = useState('https://accommodationstiet.shop');
+  const [launchContext, setLaunchContext] = useState<{
+    origin_user_id: string;
+    launch_exp: number;
+    launch_sig: string;
+  } | null>(null);
 
   useEffect(() => {
-    const loadFests = async () => {
+    const loadFestFromLaunch = async () => {
+      const defaultRedirect = process.env.NEXT_PUBLIC_LOGIN_REDIRECT_URL || 'https://accommodationstiet.shop';
+
+      const redirectToLogin = (url: string, message: string) => {
+        setPaymentError(message);
+        if (typeof window !== 'undefined') {
+          window.setTimeout(() => {
+            window.location.href = url;
+          }, 1200);
+        }
+      };
+
       try {
         const isHealthy = await checkBackendHealth();
         setBackendReady(isHealthy);
 
-        if (isHealthy) {
-          const festList = await fetchFests();
-          setFests(festList);
-        } else {
+        if (!isHealthy) {
           setPaymentError('Backend service is unavailable. Please try again later.');
+          return;
         }
+
+        const query = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams();
+        const fest_id = query.get('fest_id');
+        const origin_user_id = query.get('origin_user_id');
+        const expParam = query.get('exp');
+        const sig = query.get('sig');
+
+        if (!fest_id || !origin_user_id || !expParam || !sig) {
+          redirectToLogin(defaultRedirect, 'Please login from your fest website to continue.');
+          return;
+        }
+
+        const exp = Number(expParam);
+        if (!Number.isFinite(exp)) {
+          redirectToLogin(defaultRedirect, 'Invalid launch data. Please login again from your fest website.');
+          return;
+        }
+
+        const launchCheck = await verifyLaunch({
+          fest_id,
+          origin_user_id,
+          exp,
+          sig,
+        });
+        setLoginRedirectUrl(launchCheck.redirect_url || defaultRedirect);
+
+        const fest = await fetchFest(fest_id);
+        setSelectedFest(fest);
+        setLaunchContext({
+          origin_user_id,
+          launch_exp: exp,
+          launch_sig: sig,
+        });
       } catch (error) {
-        setPaymentError(
-          error instanceof Error ? error.message : 'Failed to load fests'
-        );
+        const fallback =
+          error instanceof LaunchVerifyError && error.redirectUrl
+            ? error.redirectUrl
+            : process.env.NEXT_PUBLIC_LOGIN_REDIRECT_URL || 'https://accommodationstiet.shop';
+        setPaymentError(error instanceof Error ? error.message : 'Launch verification failed.');
+        if (typeof window !== 'undefined') {
+          window.setTimeout(() => {
+            window.location.href = fallback;
+          }, 1200);
+        }
       } finally {
         setLoading(false);
       }
     };
 
-    loadFests();
+    loadFestFromLaunch();
   }, []);
 
   const handlePaymentClick = async (option: AccommodationOption) => {
@@ -83,6 +141,12 @@ export default function Home() {
       return;
     }
 
+    if (!launchContext) {
+      setPaymentError('Session expired. Please login again from your fest website.');
+      setActivePaymentOptionId(null);
+      return;
+    }
+
     try {
       const booking: BookingDetail = {
         accommodation_days:
@@ -95,7 +159,9 @@ export default function Home() {
 
       const response = await initiatePayment({
         fest_id: selectedFest.fest_id,
-        source: 'direct_portal',
+        origin_user_id: launchContext.origin_user_id,
+        launch_exp: launchContext.launch_exp,
+        launch_sig: launchContext.launch_sig,
         user_name: userDetails.name,
         user_state: userDetails.state,
         user_district: userDetails.district,
@@ -149,10 +215,9 @@ export default function Home() {
   };
 
   const handleBackToFests = () => {
-    setSelectedFest(null);
-    setSelectedOption(null);
-    setUserDetails({ name: '', state: '', district: '' });
-    setPaymentError(null);
+    if (typeof window !== 'undefined') {
+      window.location.href = loginRedirectUrl;
+    }
   };
 
   const handleOptionSelect = (option: AccommodationOption) => {
@@ -233,6 +298,66 @@ export default function Home() {
     return formatInr(discounted);
   };
 
+  const getOptionAmount = (fest: Fest, optionId: string, days: number): number => {
+    const pricing = fest.pricing;
+
+    if (pricing.mode === 'fixed') {
+      if (optionId === 'accommodation') return toAmount(pricing.accommodation_price ?? pricing.fixed_rate);
+      if (optionId === 'food') return toAmount(pricing.food_price ?? pricing.fixed_rate);
+      return toAmount(pricing.bundled_price ?? pricing.fixed_rate);
+    }
+
+    if (pricing.mode === 'per_day') {
+      if (optionId === 'accommodation') {
+        return toAmount(pricing.addon?.accommodation_per_day ?? pricing.per_day_rate) * days;
+      }
+      if (optionId === 'food') {
+        return toAmount(pricing.addon?.food_per_day ?? pricing.per_day_rate) * days;
+      }
+      const accommodation = toAmount(pricing.addon?.accommodation_per_day ?? pricing.per_day_rate) * days;
+      const food = toAmount(pricing.addon?.food_per_day ?? pricing.per_day_rate) * days;
+      return accommodation + food;
+    }
+
+    const accommodation = toAmount(pricing.addon?.accommodation_per_day) * days;
+    const food = toAmount(pricing.addon?.food_per_day) * days;
+    if (optionId === 'accommodation') return accommodation;
+    if (optionId === 'food') return food;
+
+    const discountPercent = toAmount(pricing.addon?.bundled_discount_percent);
+    const subtotal = accommodation + food;
+    return subtotal * (1 - discountPercent / 100);
+  };
+
+  const getAllowedOptions = (fest: Fest): Set<string> => {
+    const fromBackend = Array.isArray(fest.available_options)
+      ? fest.available_options.filter((opt) => ['accommodation', 'food', 'bundled'].includes(opt))
+      : [];
+
+    if (fromBackend.length > 0) {
+      return new Set(fromBackend);
+    }
+
+    // Fallback when older backend responses omit available_options.
+    // Infer visibility from configured prices/rates so disabled options don't render.
+    const pricing = fest.pricing;
+    const inferred: string[] = [];
+
+    if (pricing.mode === 'fixed') {
+      if (toAmount(pricing.accommodation_price ?? pricing.fixed_rate) > 0) inferred.push('accommodation');
+      if (toAmount(pricing.food_price ?? pricing.fixed_rate) > 0) inferred.push('food');
+      if (toAmount(pricing.bundled_price ?? pricing.fixed_rate) > 0) inferred.push('bundled');
+    } else {
+      const accRate = toAmount(pricing.addon?.accommodation_per_day ?? pricing.per_day_rate);
+      const foodRate = toAmount(pricing.addon?.food_per_day ?? pricing.per_day_rate);
+      if (accRate > 0) inferred.push('accommodation');
+      if (foodRate > 0) inferred.push('food');
+      if (accRate > 0 && foodRate > 0) inferred.push('bundled');
+    }
+
+    return new Set(inferred);
+  };
+
   const accommodationOptions: AccommodationOption[] = (() => {
     if (!selectedFest) return [];
 
@@ -243,12 +368,14 @@ export default function Home() {
       { id: 'bundled', title: 'Accommodation + Food', price: getDisplayPrice(selectedFest, 'bundled', optionDays), days: optionDays, icon: 'bed' },
     ];
 
-    // Bundled mode always supports all three booking choices.
-    if (selectedFest.pricing.mode === 'bundled') return baseOptions;
-
-    const allowed = new Set(selectedFest.available_options || ['accommodation', 'food', 'bundled']);
-    return baseOptions.filter((option) => allowed.has(option.id));
+    const allowed = getAllowedOptions(selectedFest);
+    return baseOptions.filter((option) => {
+      if (!allowed.has(option.id)) return false;
+      return getOptionAmount(selectedFest, option.id, optionDays) > 0;
+    });
   })();
+
+  const availableDistricts = selectedStateCode ? getDistricts(selectedStateCode) : [];
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -258,13 +385,13 @@ export default function Home() {
         <div className="w-full max-w-6xl">
           {!selectedFest ? (
             <>
-              {/* Fest Selection Screen */}
+              {/* Launch Validation Screen */}
               <div className="text-center mb-12">
                 <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-4">
                   Accommodation Booking
                 </h1>
                 <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-                  Select a festival to proceed with accommodation booking.
+                  Verifying access from your fest website.
                 </p>
               </div>
 
@@ -272,41 +399,10 @@ export default function Home() {
                 <div className="text-center py-12 bg-muted rounded-lg">
                   <p className="text-muted-foreground mb-4">Backend service is unavailable.</p>
                 </div>
-              ) : fests.length === 0 ? (
-                <div className="text-center py-12 bg-muted rounded-lg">
-                  <p className="text-muted-foreground mb-4">No fests available at the moment.</p>
-                  <p className="text-sm text-muted-foreground">Please check back later.</p>
-                </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {fests.map((fest) => (
-                    <div
-                      key={fest.fest_id}
-                      onClick={() => setSelectedFest(fest)}
-                      className="bg-card border border-border rounded-lg p-6 md:p-8 shadow-md hover:shadow-lg hover:border-primary/50 transition-all duration-300 cursor-pointer group"
-                    >
-                      <div className="flex items-start justify-between mb-4">
-                        <div>
-                          <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-2 break-words">
-                            {fest.legal_name}
-                          </h2>
-                          <p className="text-sm text-primary font-medium">{fest.event_dates || 'TBA'}</p>
-                        </div>
-                        <ChevronRight className="w-6 h-6 text-primary group-hover:translate-x-1 transition-transform" />
-                      </div>
-                      <p
-                        className="text-muted-foreground text-sm leading-relaxed break-words"
-                        style={{ display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}
-                      >
-                        {fest.short_description || 'Join us for an unforgettable experience.'}
-                      </p>
-                      <div className="mt-6 pt-4 border-t border-border">
-                        <p className="text-xs text-muted-foreground">
-                          Accommodation options available
-                        </p>
-                      </div>
-                    </div>
-                  ))}
+                <div className="text-center py-12 bg-muted rounded-lg">
+                  <p className="text-muted-foreground mb-2">Please login from your fest website to continue.</p>
+                  <p className="text-sm text-muted-foreground">Redirecting...</p>
                 </div>
               )}
             </>
@@ -319,7 +415,7 @@ export default function Home() {
                   className="inline-flex items-center gap-2 text-primary hover:text-primary/80 transition-colors mb-6"
                 >
                   <ChevronRight className="w-4 h-4 rotate-180" />
-                  Back to Fests
+                  Back to Fest Website
                 </button>
                 <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-4">
                   {selectedFest.legal_name}
@@ -371,50 +467,77 @@ export default function Home() {
                 </div>
 
                 {/* User Details Form */}
-                {selectedOption && (
-                  <div className="bg-card border border-border rounded-lg p-8 max-w-2xl mx-auto">
-                    <h2 className="text-2xl font-bold text-foreground mb-6">Your Details</h2>
-                    <div className="space-y-4">
-                      <div>
-                        <label className="block text-sm font-medium text-foreground mb-2">Full Name *</label>
-                        <input
-                          type="text"
-                          placeholder="Enter your full name"
-                          value={userDetails.name}
-                          onChange={(e) => setUserDetails({ ...userDetails, name: e.target.value })}
-                          className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-foreground mb-2">State *</label>
-                        <input
-                          type="text"
-                          placeholder="Enter your state"
-                          value={userDetails.state}
-                          onChange={(e) => setUserDetails({ ...userDetails, state: e.target.value })}
-                          className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-foreground mb-2">District *</label>
-                        <input
-                          type="text"
-                          placeholder="Enter your district"
-                          value={userDetails.district}
-                          onChange={(e) => setUserDetails({ ...userDetails, district: e.target.value })}
-                          className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                        />
-                      </div>
+                <div className="bg-card border border-border rounded-lg p-8 max-w-2xl mx-auto">
+                  <h2 className="text-2xl font-bold text-foreground mb-2">Your Details</h2>
+                  <p className="text-sm text-muted-foreground mb-6">
+                    Select an accommodation option above, then fill your details.
+                  </p>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-foreground mb-2">Full Name *</label>
+                      <input
+                        type="text"
+                        placeholder="Enter your full name"
+                        value={userDetails.name}
+                        onChange={(e) => setUserDetails({ ...userDetails, name: e.target.value })}
+                        className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                      />
                     </div>
-                    <button
-                      onClick={() => handlePaymentClick(selectedOption)}
-                      disabled={activePaymentOptionId !== null}
-                      className="w-full mt-6 px-6 py-3 bg-primary text-primary-foreground font-semibold rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                    >
-                      {activePaymentOptionId ? 'Processing Payment...' : 'Proceed to Payment'}
-                    </button>
+                    <div>
+                      <label className="block text-sm font-medium text-foreground mb-2">State *</label>
+                      <select
+                        value={selectedStateCode}
+                        onChange={(e) => {
+                          const code = e.target.value;
+                          const stateName = INDIAN_STATES.find((state) => state.code === code)?.name || '';
+                          setSelectedStateCode(code);
+                          setUserDetails((prev) => ({
+                            ...prev,
+                            state: stateName,
+                            district: '',
+                          }));
+                        }}
+                        className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                      >
+                        <option value="">Select your state</option>
+                        {INDIAN_STATES.map((state) => (
+                          <option key={state.code} value={state.code}>
+                            {state.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-foreground mb-2">District *</label>
+                      <select
+                        value={userDetails.district}
+                        onChange={(e) => setUserDetails({ ...userDetails, district: e.target.value })}
+                        disabled={!selectedStateCode}
+                        className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-60 disabled:cursor-not-allowed"
+                      >
+                        <option value="">{selectedStateCode ? 'Select your district' : 'Select state first'}</option>
+                        {availableDistricts.map((district) => (
+                          <option key={district} value={district}>
+                            {district}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
-                )}
+                  <button
+                    onClick={() => {
+                      if (!selectedOption) {
+                        setPaymentError('Please select an accommodation option first.');
+                        return;
+                      }
+                      handlePaymentClick(selectedOption);
+                    }}
+                    disabled={activePaymentOptionId !== null}
+                    className="w-full mt-6 px-6 py-3 bg-primary text-primary-foreground font-semibold rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {activePaymentOptionId ? 'Processing Payment...' : 'Proceed to Payment'}
+                  </button>
+                </div>
               </div>
             </>
           )}

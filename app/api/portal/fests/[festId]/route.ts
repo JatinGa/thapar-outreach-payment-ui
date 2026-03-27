@@ -1,0 +1,35 @@
+import { NextResponse } from 'next/server';
+
+function getBackendUrl(): string {
+  return process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
+}
+
+export async function GET(
+  request: Request,
+  { params }: { params: Promise<{ festId: string }> }
+) {
+  try {
+    const { festId } = await params;
+
+    const response = await fetch(`${getBackendUrl()}/portal/fests/${encodeURIComponent(festId)}`, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+      cache: 'no-store',
+    });
+
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      return NextResponse.json(
+        { detail: data.detail || `Fest not found (${response.status})` },
+        { status: response.status }
+      );
+    }
+
+    return NextResponse.json(data, { status: 200 });
+  } catch (error) {
+    return NextResponse.json(
+      { detail: error instanceof Error ? error.message : 'Unexpected server error' },
+      { status: 500 }
+    );
+  }
+}

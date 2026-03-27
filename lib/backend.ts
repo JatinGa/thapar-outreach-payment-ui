@@ -41,13 +41,37 @@ export interface BookingDetail {
 
 export interface PaymentInitiateRequest {
   fest_id: string;
-  origin_user_id?: string;
+  origin_user_id: string;
+  launch_exp: number;
+  launch_sig: string;
   source?: 'fest_redirect' | 'direct_portal';
   user_name: string;
   user_state: string;
   user_district: string;
   booking: BookingDetail;
   coupon_code?: string | null;
+}
+
+export interface LaunchVerifyRequest {
+  fest_id: string;
+  origin_user_id: string;
+  exp: number;
+  sig: string;
+}
+
+export interface LaunchVerifyResponse {
+  authorized: boolean;
+  redirect_url: string;
+}
+
+export class LaunchVerifyError extends Error {
+  redirectUrl?: string;
+
+  constructor(message: string, redirectUrl?: string) {
+    super(message);
+    this.name = 'LaunchVerifyError';
+    this.redirectUrl = redirectUrl;
+  }
 }
 
 export interface PaymentInitiateResponse {
@@ -108,7 +132,7 @@ function getAdminHeaders(): Record<string, string> {
 }
 
 export async function fetchFests(): Promise<Fest[]> {
-  const url = `${getBackendUrl()}/portal/fests`;
+  const url = `/api/portal/fests`;
 
   try {
     const response = await fetch(url, {
@@ -130,7 +154,7 @@ export async function fetchFests(): Promise<Fest[]> {
 }
 
 export async function fetchFest(festId: string): Promise<Fest> {
-  const url = `${getBackendUrl()}/portal/fests/${festId}`;
+  const url = `/api/portal/fests/${encodeURIComponent(festId)}`;
 
   try {
     const response = await fetch(url, {
@@ -152,7 +176,7 @@ export async function fetchFest(festId: string): Promise<Fest> {
 export async function initiatePayment(
   payload: PaymentInitiateRequest
 ): Promise<PaymentInitiateResponse> {
-  const url = `${getBackendUrl()}/payment/initiate`;
+  const url = `/api/payment/initiate`;
 
   try {
     const response = await fetch(url, {
@@ -164,7 +188,11 @@ export async function initiatePayment(
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.detail || `Payment initiation failed (${response.status})`);
+      const detail =
+        typeof errorData.detail === 'string'
+          ? errorData.detail
+          : errorData.detail?.message || `Payment initiation failed (${response.status})`;
+      throw new Error(detail);
     }
 
     return await response.json();
@@ -178,8 +206,35 @@ export async function initiatePayment(
   }
 }
 
+export async function verifyLaunch(payload: LaunchVerifyRequest): Promise<LaunchVerifyResponse> {
+  const params = new URLSearchParams({
+    fest_id: payload.fest_id,
+    origin_user_id: payload.origin_user_id,
+    exp: String(payload.exp),
+    sig: payload.sig,
+  });
+
+  const response = await fetch(`/api/portal/launch/verify?${params.toString()}`, {
+    method: 'GET',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const detail =
+      typeof data.detail === 'string'
+        ? data.detail
+        : data.detail?.message || `Launch verification failed (${response.status})`;
+    const redirectUrl = typeof data.detail === 'object' ? data.detail?.redirect_url : undefined;
+    throw new LaunchVerifyError(detail, redirectUrl);
+  }
+
+  return data as LaunchVerifyResponse;
+}
+
 export async function checkBackendHealth(): Promise<boolean> {
-  const url = `${getBackendUrl()}/health`;
+  const url = `/api/health`;
 
   try {
     const response = await fetch(url, {
