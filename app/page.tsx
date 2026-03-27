@@ -49,8 +49,8 @@ export default function Home() {
   const [loginRedirectUrl, setLoginRedirectUrl] = useState('https://accommodationstiet.shop');
   const [launchContext, setLaunchContext] = useState<{
     origin_user_id: string;
-    launch_exp: number;
-    launch_sig: string;
+    launch_exp?: number;
+    launch_sig?: string;
   } | null>(null);
 
   useEffect(() => {
@@ -83,23 +83,23 @@ export default function Home() {
           return;
         }
 
-        if (!fest_id || !origin_user_id || !expParam || !sig) {
+        if (!fest_id || !origin_user_id) {
+          const fests = await fetchFests();
+          setPublicFests(fests);
+          return;
+        }
+
+        if (!expParam || !sig) {
           if (fest_id && origin_user_id) {
             const fest = await fetchFest(fest_id);
             setSelectedFest(fest);
             setLoginRedirectUrl(fest.authorized_url || defaultRedirect);
             setLaunchContext({
               origin_user_id,
-              launch_exp: 0,
-              launch_sig: '',
             });
-            setPaymentError('Secure launch token missing. You can view options, but payment requires opening from fest website login.');
+            setPaymentError(null);
             return;
           }
-
-          const fests = await fetchFests();
-          setPublicFests(fests);
-          return;
         }
 
         const exp = Number(expParam);
@@ -160,12 +160,6 @@ export default function Home() {
       return;
     }
 
-    if (!launchContext.launch_exp || !launchContext.launch_sig) {
-      setPaymentError('Secure launch token missing. Please open payment again from your fest website login.');
-      setActivePaymentOptionId(null);
-      return;
-    }
-
     try {
       const booking: BookingDetail = {
         accommodation_days:
@@ -179,8 +173,12 @@ export default function Home() {
       const response = await initiatePayment({
         fest_id: selectedFest.fest_id,
         origin_user_id: launchContext.origin_user_id,
-        launch_exp: launchContext.launch_exp,
-        launch_sig: launchContext.launch_sig,
+        ...(launchContext.launch_exp && launchContext.launch_sig
+          ? {
+              launch_exp: launchContext.launch_exp,
+              launch_sig: launchContext.launch_sig,
+            }
+          : {}),
         user_name: userDetails.name,
         user_state: userDetails.state,
         user_district: userDetails.district,

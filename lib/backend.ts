@@ -43,8 +43,8 @@ export interface BookingDetail {
 export interface PaymentInitiateRequest {
   fest_id: string;
   origin_user_id: string;
-  launch_exp: number;
-  launch_sig: string;
+  launch_exp?: number;
+  launch_sig?: string;
   source?: 'fest_redirect' | 'direct_portal';
   user_name: string;
   user_state: string;
