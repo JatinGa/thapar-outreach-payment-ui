@@ -78,6 +78,8 @@ export class LaunchVerifyError extends Error {
 export interface PaymentInitiateResponse {
   internal_tx_id: string;
   easebuzz_payment_url: string;
+  easebuzz_access_key?: string;
+  easebuzz_redirect_url?: string;
   txnid: string;
   key: string;
   hash: string;

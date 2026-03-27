@@ -108,6 +108,11 @@ export default function Home() {
           return;
         }
 
+        if (!sig) {
+          redirectToLogin(defaultRedirect, 'Invalid launch signature. Please login again from your fest website.');
+          return;
+        }
+
         const launchCheck = await verifyLaunch({
           fest_id,
           origin_user_id,
@@ -186,46 +191,47 @@ export default function Home() {
       });
 
       if (typeof window !== 'undefined') {
-        try {
-          window.sessionStorage.setItem('lastTransactionId', response.internal_tx_id);
+        window.sessionStorage.setItem('lastTransactionId', response.internal_tx_id);
 
-          console.log('Payment response received:', {
-            url: response.easebuzz_payment_url,
-            txnid: response.txnid,
-          });
-
-          // Build query string with all payment parameters
-          const params = new URLSearchParams({
-            key: response.key,
-            txnid: response.txnid,
-            amount: response.amount,
-            productinfo: response.productinfo,
-            firstname: response.firstname,
-            email: response.email,
-            phone: response.phone,
-            surl: response.surl,
-            furl: response.furl,
-            hash: response.hash,
-            udf1: response.udf1,
-            udf2: response.udf2,
-            udf3: response.udf3,
-            udf4: response.udf4,
-            udf5: response.udf5,
-          });
-
-          // Construct the full payment URL with params
-          const paymentUrl = `${response.easebuzz_payment_url}?${params.toString()}`;
-          
-          console.log('Redirecting to:', paymentUrl);
-          
-          // Redirect directly to EaseBuzz payment page
-          window.location.href = paymentUrl;
-        } catch (formError) {
-          console.error('Payment redirect error:', formError);
-          setPaymentError(
-            formError instanceof Error ? formError.message : 'Failed to redirect to payment'
-          );
+        if (response.easebuzz_redirect_url) {
+          window.location.href = response.easebuzz_redirect_url;
+          return;
         }
+
+        // Fallback for older API behavior: post signed fields directly to initiate endpoint.
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = response.easebuzz_payment_url;
+        form.style.display = 'none';
+
+        const fields: Record<string, string> = {
+          key: response.key,
+          txnid: response.txnid,
+          amount: response.amount,
+          productinfo: response.productinfo,
+          firstname: response.firstname,
+          email: response.email,
+          phone: response.phone,
+          surl: response.surl,
+          furl: response.furl,
+          hash: response.hash,
+          udf1: response.udf1,
+          udf2: response.udf2,
+          udf3: response.udf3,
+          udf4: response.udf4,
+          udf5: response.udf5,
+        };
+
+        Object.entries(fields).forEach(([name, value]) => {
+          const input = document.createElement('input');
+          input.type = 'hidden';
+          input.name = name;
+          input.value = value ?? '';
+          form.appendChild(input);
+        });
+
+        document.body.appendChild(form);
+        form.submit();
       }
     } catch (error) {
       setPaymentError(

@@ -4,6 +4,11 @@ function getBackendUrl(): string {
   return process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
 }
 
+function buildEasebuzzPayUrl(initiateUrl: string, accessKey: string): string {
+  const url = new URL(initiateUrl);
+  return `${url.origin}/pay/${accessKey}`;
+}
+
 export async function POST(request: Request) {
   try {
     const payload = await request.json();
@@ -23,7 +28,54 @@ export async function POST(request: Request) {
       );
     }
 
-    return NextResponse.json(data, { status: 201 });
+    const fields = {
+      key: data.key,
+      txnid: data.txnid,
+      amount: data.amount,
+      productinfo: data.productinfo,
+      firstname: data.firstname,
+      email: data.email,
+      phone: data.phone,
+      surl: data.surl,
+      furl: data.furl,
+      hash: data.hash,
+      udf1: data.udf1 || '',
+      udf2: data.udf2 || '',
+      udf3: data.udf3 || '',
+      udf4: data.udf4 || '',
+      udf5: data.udf5 || '',
+    };
+
+    const easebuzzResp = await fetch(data.easebuzz_payment_url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams(fields),
+      cache: 'no-store',
+    });
+
+    const easebuzzJson = await easebuzzResp.json().catch(() => ({}));
+    if (!easebuzzResp.ok || easebuzzJson.status !== 1 || !easebuzzJson.data) {
+      return NextResponse.json(
+        {
+          detail:
+            easebuzzJson.error_desc ||
+            `EaseBuzz initiation failed (${easebuzzResp.status})`,
+        },
+        { status: 502 }
+      );
+    }
+
+    return NextResponse.json(
+      {
+        ...data,
+        easebuzz_access_key: String(easebuzzJson.data),
+        easebuzz_redirect_url: buildEasebuzzPayUrl(
+          String(data.easebuzz_payment_url),
+          String(easebuzzJson.data)
+        ),
+      },
+      { status: 201 }
+    );
   } catch (error) {
     return NextResponse.json(
       { detail: error instanceof Error ? error.message : 'Unexpected server error' },
