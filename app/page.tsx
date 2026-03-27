@@ -6,7 +6,7 @@ import { Bed, UtensilsCrossed, ChevronRight } from 'lucide-react';
 import { getAllStates, getDistricts } from 'india-state-district';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import { fetchFest, initiatePayment, checkBackendHealth, verifyLaunch, LaunchVerifyError, Fest, BookingDetail } from '@/lib/backend';
+import { fetchFests, fetchFest, initiatePayment, checkBackendHealth, verifyLaunch, LaunchVerifyError, Fest, BookingDetail } from '@/lib/backend';
 
 const PaymentCard = dynamic(() => import('@/components/PaymentCard'), {
   loading: () => (
@@ -37,6 +37,7 @@ const iconMap = {
 const INDIAN_STATES = getAllStates();
 
 export default function Home() {
+  const [publicFests, setPublicFests] = useState<Fest[]>([]);
   const [selectedFest, setSelectedFest] = useState<Fest | null>(null);
   const [selectedOption, setSelectedOption] = useState<AccommodationOption | null>(null);
   const [userDetails, setUserDetails] = useState({ name: '', state: '', district: '' });
@@ -46,7 +47,6 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [backendReady, setBackendReady] = useState(false);
   const [loginRedirectUrl, setLoginRedirectUrl] = useState('https://accommodationstiet.shop');
-  const [isAutoRedirecting, setIsAutoRedirecting] = useState(false);
   const [launchContext, setLaunchContext] = useState<{
     origin_user_id: string;
     launch_exp: number;
@@ -57,27 +57,9 @@ export default function Home() {
     const loadFestFromLaunch = async () => {
       const defaultRedirect = process.env.NEXT_PUBLIC_LOGIN_REDIRECT_URL || 'https://accommodationstiet.shop';
 
-      const shouldAutoRedirect = (targetUrl: string): boolean => {
-        if (typeof window === 'undefined') return false;
-        try {
-          const current = new URL(window.location.href);
-          const target = new URL(targetUrl, window.location.origin);
-          return !(current.origin === target.origin && current.pathname === target.pathname);
-        } catch {
-          return true;
-        }
-      };
-
       const redirectToLogin = (url: string, message: string) => {
         setLoginRedirectUrl(url);
         setPaymentError(message);
-        const canAutoRedirect = shouldAutoRedirect(url);
-        setIsAutoRedirecting(canAutoRedirect);
-        if (typeof window !== 'undefined' && canAutoRedirect) {
-          window.setTimeout(() => {
-            window.location.href = url;
-          }, 1200);
-        }
       };
 
       try {
@@ -96,7 +78,8 @@ export default function Home() {
         const sig = query.get('sig');
 
         if (!fest_id || !origin_user_id || !expParam || !sig) {
-          redirectToLogin(defaultRedirect, 'Please login from your fest website to continue.');
+          const fests = await fetchFests();
+          setPublicFests(fests);
           return;
         }
 
@@ -126,6 +109,7 @@ export default function Home() {
           error instanceof LaunchVerifyError && error.redirectUrl
             ? error.redirectUrl
             : process.env.NEXT_PUBLIC_LOGIN_REDIRECT_URL || 'https://accommodationstiet.shop';
+        setPublicFests([]);
         redirectToLogin(fallback, error instanceof Error ? error.message : 'Launch verification failed.');
       } finally {
         setLoading(false);
@@ -233,6 +217,15 @@ export default function Home() {
   const handleOptionSelect = (option: AccommodationOption) => {
     setSelectedOption(option);
     setPaymentError(null);
+  };
+
+  const handleOpenFestWebsite = (fest: Fest) => {
+    const fallback = process.env.NEXT_PUBLIC_LOGIN_REDIRECT_URL || 'https://accommodationstiet.shop';
+    const targetUrl = fest.authorized_url || fallback;
+    setPaymentError(`Redirecting to ${fest.legal_name} website...`);
+    if (typeof window !== 'undefined') {
+      window.location.href = targetUrl;
+    }
   };
 
   if (loading) {
@@ -395,36 +388,48 @@ export default function Home() {
         <div className="w-full max-w-6xl">
           {!selectedFest ? (
             <>
-              {/* Launch Validation Screen */}
+              {/* Public Fest Listing Screen */}
               <div className="text-center mb-12">
                 <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-4">
-                  Accommodation Booking
+                  Available Fests
                 </h1>
                 <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-                  Verifying access from your fest website.
+                  Select a fest to continue on its official website.
                 </p>
               </div>
+
+              {paymentError && (
+                <div className="mb-6 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+                  {paymentError}
+                </div>
+              )}
 
               {!backendReady ? (
                 <div className="text-center py-12 bg-muted rounded-lg">
                   <p className="text-muted-foreground mb-4">Backend service is unavailable.</p>
                 </div>
               ) : (
-                <div className="text-center py-12 bg-muted rounded-lg">
-                  <p className="text-muted-foreground mb-2">Please login from your fest website to continue.</p>
-                  {isAutoRedirecting ? (
-                    <p className="text-sm text-muted-foreground">Redirecting...</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {publicFests.length === 0 ? (
+                    <div className="md:col-span-2 text-center py-12 bg-muted rounded-lg">
+                      <p className="text-muted-foreground mb-2">No fests are available right now.</p>
+                    </div>
                   ) : (
-                    <button
-                      onClick={() => {
-                        if (typeof window !== 'undefined') {
-                          window.location.href = loginRedirectUrl;
-                        }
-                      }}
-                      className="mt-2 inline-flex items-center gap-2 text-primary hover:text-primary/80 transition-colors"
-                    >
-                      Go to Fest Website
-                    </button>
+                    publicFests.map((fest) => (
+                      <div key={fest.fest_id} className="bg-card border border-border rounded-lg p-6 shadow-sm">
+                        <h3 className="text-2xl font-bold text-foreground mb-2">{fest.legal_name}</h3>
+                        <p className="text-sm text-muted-foreground mb-1">{fest.event_dates || 'Dates to be announced'}</p>
+                        <p className="text-sm text-muted-foreground mb-6">
+                          {fest.short_description || fest.long_description || 'Open fest website to continue registration and payment.'}
+                        </p>
+                        <button
+                          onClick={() => handleOpenFestWebsite(fest)}
+                          className="w-full px-5 py-2 rounded-lg bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-colors"
+                        >
+                          Go to Fest Website
+                        </button>
+                      </div>
+                    ))
                   )}
                 </div>
               )}

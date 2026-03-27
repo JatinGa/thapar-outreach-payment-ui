@@ -25,6 +25,7 @@ export interface Fest {
   event_dates?: string;
   short_description?: string;
   long_description?: string;
+  authorized_url?: string;
   pricing: PricingConfig;
   available_options?: string[];
   accommodation_per_day?: string;
