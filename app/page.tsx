@@ -186,48 +186,65 @@ export default function Home() {
       });
 
       if (typeof window !== 'undefined') {
-        window.sessionStorage.setItem('lastTransactionId', response.internal_tx_id);
+        try {
+          window.sessionStorage.setItem('lastTransactionId', response.internal_tx_id);
 
-        // EaseBuzz expects a POST form submission with signed fields.
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = response.easebuzz_payment_url;
-        form.style.display = 'none';
+          // Debug: log the response
+          console.log('Payment response received:', {
+            url: response.easebuzz_payment_url,
+            hasAllFields: !!(response.key && response.hash && response.amount),
+          });
 
-        const fields: Record<string, string> = {
-          key: response.key,
-          txnid: response.txnid,
-          amount: response.amount,
-          productinfo: response.productinfo,
-          firstname: response.firstname,
-          email: response.email,
-          phone: response.phone,
-          surl: response.surl,
-          furl: response.furl,
-          hash: response.hash,
-          udf1: response.udf1,
-          udf2: response.udf2,
-          udf3: response.udf3,
-          udf4: response.udf4,
-          udf5: response.udf5,
-        };
+          // EaseBuzz expects a POST form submission with signed fields.
+          const form = document.createElement('form');
+          form.method = 'POST';
+          form.action = response.easebuzz_payment_url;
+          form.style.display = 'none';
 
-        Object.entries(fields).forEach(([name, value]) => {
-          const input = document.createElement('input');
-          input.type = 'hidden';
-          input.name = name;
-          input.value = value ?? '';
-          form.appendChild(input);
-        });
+          if (!response.easebuzz_payment_url) {
+            throw new Error('Missing easebuzz_payment_url in response');
+          }
 
-        document.body.appendChild(form);
-        
-        // Use setTimeout to ensure DOM is ready before submitting
-        setTimeout(() => {
-          console.log('Submitting form to:', form.action);
-          console.log('Form fields:', Object.keys(fields).length);
-          form.submit();
-        }, 0);
+          const fields: Record<string, string> = {
+            key: response.key,
+            txnid: response.txnid,
+            amount: response.amount,
+            productinfo: response.productinfo,
+            firstname: response.firstname,
+            email: response.email,
+            phone: response.phone,
+            surl: response.surl,
+            furl: response.furl,
+            hash: response.hash,
+            udf1: response.udf1,
+            udf2: response.udf2,
+            udf3: response.udf3,
+            udf4: response.udf4,
+            udf5: response.udf5,
+          };
+
+          Object.entries(fields).forEach(([name, value]) => {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = name;
+            input.value = value ?? '';
+            form.appendChild(input);
+          });
+
+          document.body.appendChild(form);
+          console.log('Form created and appended, submitting...');
+          
+          // Use setTimeout to ensure DOM is ready before submitting
+          setTimeout(() => {
+            console.log('Calling form.submit()');
+            form.submit();
+          }, 0);
+        } catch (formError) {
+          console.error('Form creation error:', formError);
+          setPaymentError(
+            formError instanceof Error ? formError.message : 'Failed to create payment form'
+          );
+        }
       }
     } catch (error) {
       setPaymentError(
