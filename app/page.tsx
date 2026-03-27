@@ -192,6 +192,7 @@ export default function Home() {
         const form = document.createElement('form');
         form.method = 'POST';
         form.action = response.easebuzz_payment_url;
+        form.style.display = 'none';
 
         const fields: Record<string, string> = {
           key: response.key,
@@ -220,7 +221,13 @@ export default function Home() {
         });
 
         document.body.appendChild(form);
-        form.submit();
+        
+        // Use setTimeout to ensure DOM is ready before submitting
+        setTimeout(() => {
+          console.log('Submitting form to:', form.action);
+          console.log('Form fields:', Object.keys(fields).length);
+          form.submit();
+        }, 0);
       }
     } catch (error) {
       setPaymentError(
