@@ -189,23 +189,13 @@ export default function Home() {
         try {
           window.sessionStorage.setItem('lastTransactionId', response.internal_tx_id);
 
-          // Debug: log the response
           console.log('Payment response received:', {
             url: response.easebuzz_payment_url,
-            hasAllFields: !!(response.key && response.hash && response.amount),
+            txnid: response.txnid,
           });
 
-          // EaseBuzz expects a POST form submission with signed fields.
-          const form = document.createElement('form');
-          form.method = 'POST';
-          form.action = response.easebuzz_payment_url;
-          form.style.display = 'none';
-
-          if (!response.easebuzz_payment_url) {
-            throw new Error('Missing easebuzz_payment_url in response');
-          }
-
-          const fields: Record<string, string> = {
+          // Build query string with all payment parameters
+          const params = new URLSearchParams({
             key: response.key,
             txnid: response.txnid,
             amount: response.amount,
@@ -221,28 +211,19 @@ export default function Home() {
             udf3: response.udf3,
             udf4: response.udf4,
             udf5: response.udf5,
-          };
-
-          Object.entries(fields).forEach(([name, value]) => {
-            const input = document.createElement('input');
-            input.type = 'hidden';
-            input.name = name;
-            input.value = value ?? '';
-            form.appendChild(input);
           });
 
-          document.body.appendChild(form);
-          console.log('Form created and appended, submitting...');
+          // Construct the full payment URL with params
+          const paymentUrl = `${response.easebuzz_payment_url}?${params.toString()}`;
           
-          // Use setTimeout to ensure DOM is ready before submitting
-          setTimeout(() => {
-            console.log('Calling form.submit()');
-            form.submit();
-          }, 0);
+          console.log('Redirecting to:', paymentUrl);
+          
+          // Redirect directly to EaseBuzz payment page
+          window.location.href = paymentUrl;
         } catch (formError) {
-          console.error('Form creation error:', formError);
+          console.error('Payment redirect error:', formError);
           setPaymentError(
-            formError instanceof Error ? formError.message : 'Failed to create payment form'
+            formError instanceof Error ? formError.message : 'Failed to redirect to payment'
           );
         }
       }
