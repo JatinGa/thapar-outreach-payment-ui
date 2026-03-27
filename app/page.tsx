@@ -220,11 +220,9 @@ export default function Home() {
   };
 
   const handleOpenFestWebsite = (fest: Fest) => {
-    const fallback = process.env.NEXT_PUBLIC_LOGIN_REDIRECT_URL || 'https://accommodationstiet.shop';
-    const targetUrl = fest.authorized_url || fallback;
     setPaymentError(`Redirecting to ${fest.legal_name} website...`);
     if (typeof window !== 'undefined') {
-      window.location.href = targetUrl;
+      window.location.href = `/api/portal/fests/${encodeURIComponent(fest.fest_id)}/redirect`;
     }
   };
 
