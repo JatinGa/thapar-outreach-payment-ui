@@ -10,13 +10,27 @@ next.user-config.*
 
 # Environment variables
 .env*.local
+.env
+
+# Python virtual environments and caches
+.venv/
+**/__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
 
 # Common ignores
 node_modules/
 .next/
+dist/
+build/
+coverage/
+*.log
 .DS_Store
 
 # Local backend clone and notes
 backend/
 backen/
+realbackend/
 FRONTEND_INTEGRATION.md
+PAYMENT_OPTIONS.md

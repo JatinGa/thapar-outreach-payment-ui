@@ -55,12 +55,12 @@ export default function PaymentCard({
         </div>
 
         {/* Title */}
-        <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-3">
+        <h2 className="text-lg md:text-xl font-bold text-foreground mb-3 whitespace-nowrap overflow-hidden text-ellipsis">
           {title}
         </h2>
 
         {/* Description */}
-        <p className="text-muted-foreground mb-6 text-sm md:text-base leading-relaxed">
+        <p className="text-muted-foreground mb-6 text-sm leading-relaxed">
           {description}
         </p>
 
@@ -79,7 +79,7 @@ export default function PaymentCard({
         <Button
           onClick={(e) => {
             e.stopPropagation();
-            onProceedToPayment();
+            onCardSelect();
           }}
           disabled={isLoading}
           className={`w-full py-3 rounded-lg font-semibold transition-all duration-300 ${
