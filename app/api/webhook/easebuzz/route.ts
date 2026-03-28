@@ -28,7 +28,8 @@ function paymentSuccessRedirect(
 ): NextResponse {
   const festId = getFestIdFromEntries(entries);
   const festFallbackUrl = festId ? getFestRedirectRoute(request, festId) : undefined;
-  const festAuthorizedUrl = redirectUrl || festFallbackUrl || getMainWebsiteUrl();
+  // Fest-specific redirect must take priority when udf2 is present.
+  const festAuthorizedUrl = festFallbackUrl || redirectUrl || getMainWebsiteUrl();
   return NextResponse.redirect(
     new URL(
       `/payment-success?redirect=${encodeURIComponent(festAuthorizedUrl)}`,

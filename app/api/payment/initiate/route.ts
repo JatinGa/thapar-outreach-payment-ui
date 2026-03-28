@@ -12,6 +12,7 @@ function buildEasebuzzPayUrl(initiateUrl: string, accessKey: string): string {
 export async function POST(request: Request) {
   try {
     const payload = await request.json();
+    const callbackUrl = new URL('/api/webhook/easebuzz', request.url).toString();
 
     const response = await fetch(`${getBackendUrl()}/payment/initiate`, {
       method: 'POST',
@@ -36,8 +37,9 @@ export async function POST(request: Request) {
       firstname: data.firstname,
       email: data.email,
       phone: data.phone,
-      surl: data.surl,
-      furl: data.furl,
+      // Force browser callback through frontend route to show success page UX.
+      surl: callbackUrl,
+      furl: callbackUrl,
       hash: data.hash,
       udf1: data.udf1 || '',
       udf2: data.udf2 || '',
@@ -68,6 +70,8 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         ...data,
+        surl: callbackUrl,
+        furl: callbackUrl,
         easebuzz_access_key: String(easebuzzJson.data),
         easebuzz_redirect_url: buildEasebuzzPayUrl(
           String(data.easebuzz_payment_url),
