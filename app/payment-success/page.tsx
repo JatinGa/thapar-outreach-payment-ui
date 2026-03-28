@@ -7,7 +7,11 @@ import Footer from '@/components/Footer';
 import { Button } from '@/components/ui/button';
 
 export default function PaymentSuccess() {
-  const [redirectUrl, setRedirectUrl] = useState<string>('https://accommodationstiet.shop');
+  const [redirectUrl, setRedirectUrl] = useState<string>(
+    process.env.NEXT_PUBLIC_MAIN_WEBSITE_URL ||
+      process.env.NEXT_PUBLIC_LOGIN_REDIRECT_URL ||
+      'https://www.thapar.edu'
+  );
   const [countdown, setCountdown] = useState(5);
   const [autoRedirecting, setAutoRedirecting] = useState(true);
 
