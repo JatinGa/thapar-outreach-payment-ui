@@ -527,77 +527,79 @@ export default function Home() {
                 </div>
 
                 {/* User Details Form */}
-                <div className="bg-card border border-border rounded-lg p-8 max-w-2xl mx-auto">
-                  <h2 className="text-2xl font-bold text-foreground mb-2">Your Details</h2>
-                  <p className="text-sm text-muted-foreground mb-6">
-                    Select an accommodation option above, then fill your details.
-                  </p>
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-foreground mb-2">Full Name *</label>
-                      <input
-                        type="text"
-                        placeholder="Enter your full name"
-                        value={userDetails.name}
-                        onChange={(e) => setUserDetails({ ...userDetails, name: e.target.value })}
-                        className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                      />
+                {selectedOption && (
+                  <div className="bg-card border border-border rounded-lg p-8 max-w-2xl mx-auto">
+                    <h2 className="text-2xl font-bold text-foreground mb-2">Your Details</h2>
+                    <p className="text-sm text-muted-foreground mb-6">
+                      Fill your details to continue with {selectedOption.title.toLowerCase()}.
+                    </p>
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-foreground mb-2">Full Name *</label>
+                        <input
+                          type="text"
+                          placeholder="Enter your full name"
+                          value={userDetails.name}
+                          onChange={(e) => setUserDetails({ ...userDetails, name: e.target.value })}
+                          className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-foreground mb-2">State *</label>
+                        <select
+                          value={selectedStateCode}
+                          onChange={(e) => {
+                            const code = e.target.value;
+                            const stateName = INDIAN_STATES.find((state) => state.code === code)?.name || '';
+                            setSelectedStateCode(code);
+                            setUserDetails((prev) => ({
+                              ...prev,
+                              state: stateName,
+                              district: '',
+                            }));
+                          }}
+                          className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                        >
+                          <option value="">Select your state</option>
+                          {INDIAN_STATES.map((state) => (
+                            <option key={state.code} value={state.code}>
+                              {state.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-foreground mb-2">District *</label>
+                        <select
+                          value={userDetails.district}
+                          onChange={(e) => setUserDetails({ ...userDetails, district: e.target.value })}
+                          disabled={!selectedStateCode}
+                          className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-60 disabled:cursor-not-allowed"
+                        >
+                          <option value="">{selectedStateCode ? 'Select your district' : 'Select state first'}</option>
+                          {availableDistricts.map((district) => (
+                            <option key={district} value={district}>
+                              {district}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-foreground mb-2">State *</label>
-                      <select
-                        value={selectedStateCode}
-                        onChange={(e) => {
-                          const code = e.target.value;
-                          const stateName = INDIAN_STATES.find((state) => state.code === code)?.name || '';
-                          setSelectedStateCode(code);
-                          setUserDetails((prev) => ({
-                            ...prev,
-                            state: stateName,
-                            district: '',
-                          }));
-                        }}
-                        className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                      >
-                        <option value="">Select your state</option>
-                        {INDIAN_STATES.map((state) => (
-                          <option key={state.code} value={state.code}>
-                            {state.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-foreground mb-2">District *</label>
-                      <select
-                        value={userDetails.district}
-                        onChange={(e) => setUserDetails({ ...userDetails, district: e.target.value })}
-                        disabled={!selectedStateCode}
-                        className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-60 disabled:cursor-not-allowed"
-                      >
-                        <option value="">{selectedStateCode ? 'Select your district' : 'Select state first'}</option>
-                        {availableDistricts.map((district) => (
-                          <option key={district} value={district}>
-                            {district}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
+                    <button
+                      onClick={() => {
+                        if (!selectedOption) {
+                          setPaymentError('Please select an accommodation option first.');
+                          return;
+                        }
+                        handlePaymentClick(selectedOption);
+                      }}
+                      disabled={activePaymentOptionId !== null}
+                      className="w-full mt-6 px-6 py-3 bg-primary text-primary-foreground font-semibold rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      {activePaymentOptionId ? 'Processing Payment...' : 'Proceed to Payment'}
+                    </button>
                   </div>
-                  <button
-                    onClick={() => {
-                      if (!selectedOption) {
-                        setPaymentError('Please select an accommodation option first.');
-                        return;
-                      }
-                      handlePaymentClick(selectedOption);
-                    }}
-                    disabled={activePaymentOptionId !== null}
-                    className="w-full mt-6 px-6 py-3 bg-primary text-primary-foreground font-semibold rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  >
-                    {activePaymentOptionId ? 'Processing Payment...' : 'Proceed to Payment'}
-                  </button>
-                </div>
+                )}
               </div>
             </>
           )}
