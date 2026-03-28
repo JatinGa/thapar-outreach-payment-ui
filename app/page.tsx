@@ -483,7 +483,7 @@ export default function Home() {
                 <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-4">
                   {selectedFest.event_dates || 'Special Event'}
                 </p>
-                <p className="text-base text-muted-foreground max-w-2xl mx-auto">
+                <p className="text-base text-muted-foreground max-w-2xl mx-auto whitespace-pre-line leading-relaxed text-left">
                   {selectedFest.long_description || 'Select your accommodation and provide your details to proceed with payment.'}
                 </p>
               </div>
