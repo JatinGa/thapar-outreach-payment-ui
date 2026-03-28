@@ -12,8 +12,23 @@ function getMainWebsiteUrl(): string {
   );
 }
 
-function paymentSuccessRedirect(request: NextRequest, redirectUrl?: string): NextResponse {
-  const festAuthorizedUrl = redirectUrl || getMainWebsiteUrl();
+function getFestIdFromEntries(entries: Array<[string, string]>): string | null {
+  const festId = entries.find(([k]) => k === 'udf2')?.[1];
+  return festId && festId.trim() ? festId.trim() : null;
+}
+
+function getFestRedirectRoute(request: NextRequest, festId: string): string {
+  return new URL(`/api/portal/fests/${encodeURIComponent(festId)}/redirect`, request.url).toString();
+}
+
+function paymentSuccessRedirect(
+  request: NextRequest,
+  entries: Array<[string, string]>,
+  redirectUrl?: string
+): NextResponse {
+  const festId = getFestIdFromEntries(entries);
+  const festFallbackUrl = festId ? getFestRedirectRoute(request, festId) : undefined;
+  const festAuthorizedUrl = redirectUrl || festFallbackUrl || getMainWebsiteUrl();
   return NextResponse.redirect(
     new URL(
       `/payment-success?redirect=${encodeURIComponent(festAuthorizedUrl)}`,
@@ -39,14 +54,16 @@ async function forwardToBackendAndRedirect(
     });
 
     const backendData = await backendResponse.json().catch(() => ({}));
-    if (backendResponse.ok && backendData.success) {
-      return paymentSuccessRedirect(request, backendData.authorized_url);
+    if (backendResponse.ok) {
+      const backendAuthorizedUrl =
+        typeof backendData.authorized_url === 'string' ? backendData.authorized_url : undefined;
+      return paymentSuccessRedirect(request, entries, backendAuthorizedUrl);
     }
 
-    return paymentSuccessRedirect(request);
+    return paymentSuccessRedirect(request, entries);
   } catch (error) {
     console.error('[Webhook] Error processing EaseBuzz callback:', error);
-    return paymentSuccessRedirect(request);
+    return paymentSuccessRedirect(request, entries);
   }
 }
 
