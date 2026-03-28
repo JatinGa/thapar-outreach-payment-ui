@@ -67,15 +67,12 @@ export default function PaymentSuccess() {
           </h1>
 
           <p className="text-base text-muted-foreground">
-            Your payment has been processed successfully. Your booking confirmation has been sent to your email.
+            Your payment has been processed successfully. Your booking confirmation will be sent to your email.
           </p>
 
           <div className="bg-muted p-4 rounded-lg space-y-2">
             <p className="text-sm text-muted-foreground">
               Redirecting to fest website in <span className="font-bold text-foreground">{countdown}</span> seconds...
-            </p>
-            <p className="text-xs text-muted-foreground truncate">
-              {redirectUrl}
             </p>
           </div>
 
