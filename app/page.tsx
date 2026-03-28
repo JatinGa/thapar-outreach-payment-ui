@@ -251,6 +251,14 @@ export default function Home() {
   const handleOptionSelect = (option: AccommodationOption) => {
     setSelectedOption(option);
     setPaymentError(null);
+
+    // The details form renders conditionally; wait for the next paint before scrolling.
+    if (typeof window !== 'undefined') {
+      window.requestAnimationFrame(() => {
+        const detailsSection = document.getElementById('user-details-section');
+        detailsSection?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    }
   };
 
   const handleOpenFestWebsite = (fest: Fest) => {
@@ -528,7 +536,10 @@ export default function Home() {
 
                 {/* User Details Form */}
                 {selectedOption && (
-                  <div className="bg-card border border-border rounded-lg p-4 sm:p-6 md:p-8 max-w-2xl mx-auto">
+                  <div
+                    id="user-details-section"
+                    className="bg-card border border-border rounded-lg p-4 sm:p-6 md:p-8 max-w-2xl mx-auto"
+                  >
                     <h2 className="text-xl sm:text-2xl font-bold text-foreground mb-2">Your Details</h2>
                     <p className="text-sm text-muted-foreground mb-6">
                       Fill your details to continue with {selectedOption.title.toLowerCase()}.
