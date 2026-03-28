@@ -416,16 +416,16 @@ export default function Home() {
     <div className="min-h-screen bg-background flex flex-col">
       <Header />
 
-      <main className="flex-1 flex items-center justify-center px-4 py-12 md:py-16">
+      <main className="flex-1 flex items-center justify-center px-3 sm:px-4 py-8 sm:py-10 md:py-16">
         <div className="w-full max-w-6xl">
           {!selectedFest ? (
             <>
               {/* Public Fest Listing Screen */}
-              <div className="text-center mb-12">
-                <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-4">
+              <div className="text-center mb-8 sm:mb-10 md:mb-12">
+                <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-foreground mb-3 sm:mb-4">
                   Available Fests
                 </h1>
-                <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+                <p className="text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto px-2">
                   Select a fest to continue on its official website.
                 </p>
               </div>
@@ -441,17 +441,17 @@ export default function Home() {
                   <p className="text-muted-foreground mb-4">Backend service is unavailable.</p>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
                   {publicFests.length === 0 ? (
                     <div className="md:col-span-2 text-center py-12 bg-muted rounded-lg">
                       <p className="text-muted-foreground mb-2">No fests are available right now.</p>
                     </div>
                   ) : (
                     publicFests.map((fest) => (
-                      <div key={fest.fest_id} className="bg-card border border-border rounded-lg p-6 shadow-sm">
-                        <h3 className="text-2xl font-bold text-foreground mb-2">{fest.legal_name}</h3>
+                      <div key={fest.fest_id} className="bg-card border border-border rounded-lg p-4 sm:p-6 shadow-sm">
+                        <h3 className="text-xl sm:text-2xl font-bold text-foreground mb-2 break-words">{fest.legal_name}</h3>
                         <p className="text-sm text-muted-foreground mb-1">{fest.event_dates || 'Dates to be announced'}</p>
-                        <p className="text-sm text-muted-foreground mb-6">
+                        <p className="text-sm text-muted-foreground mb-4 sm:mb-6">
                           {fest.short_description || fest.long_description || 'Open fest website to continue registration and payment.'}
                         </p>
                         <button
@@ -469,7 +469,7 @@ export default function Home() {
           ) : (
             <>
               {/* Accommodation Selection & User Details Screen */}
-              <div className="text-center mb-12">
+              <div className="text-center mb-8 sm:mb-10 md:mb-12">
                 <button
                   onClick={handleBackToFests}
                   className="inline-flex items-center gap-2 text-primary hover:text-primary/80 transition-colors mb-6"
@@ -477,13 +477,13 @@ export default function Home() {
                   <ChevronRight className="w-4 h-4 rotate-180" />
                   Back to Fest Website
                 </button>
-                <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-4">
+                <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-foreground mb-3 sm:mb-4 break-words">
                   {selectedFest.legal_name}
                 </h1>
-                <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-4">
+                <p className="text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto mb-3 sm:mb-4 px-2">
                   {selectedFest.event_dates || 'Special Event'}
                 </p>
-                <p className="text-base text-muted-foreground max-w-2xl mx-auto whitespace-pre-line leading-relaxed text-center">
+                <p className="text-sm sm:text-base text-muted-foreground max-w-3xl mx-auto whitespace-pre-line leading-relaxed text-center px-2">
                   {selectedFest.long_description || 'Select your accommodation and provide your details to proceed with payment.'}
                 </p>
               </div>
@@ -496,9 +496,9 @@ export default function Home() {
 
               <div className="w-full">
                 {/* Accommodation Options */}
-                <div className="mb-12">
-                  <h2 className="text-2xl font-bold text-foreground mb-6">Choose Accommodation</h2>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="mb-10 sm:mb-12">
+                  <h2 className="text-xl sm:text-2xl font-bold text-foreground mb-4 sm:mb-6">Choose Accommodation</h2>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
                     {accommodationOptions.map((option) => {
                       const IconComponent = iconMap[option.icon];
                       const getDescription = (optionId: string) => {
@@ -528,8 +528,8 @@ export default function Home() {
 
                 {/* User Details Form */}
                 {selectedOption && (
-                  <div className="bg-card border border-border rounded-lg p-8 max-w-2xl mx-auto">
-                    <h2 className="text-2xl font-bold text-foreground mb-2">Your Details</h2>
+                  <div className="bg-card border border-border rounded-lg p-4 sm:p-6 md:p-8 max-w-2xl mx-auto">
+                    <h2 className="text-xl sm:text-2xl font-bold text-foreground mb-2">Your Details</h2>
                     <p className="text-sm text-muted-foreground mb-6">
                       Fill your details to continue with {selectedOption.title.toLowerCase()}.
                     </p>

@@ -30,7 +30,7 @@ export default function PaymentCard({
 }: PaymentCardProps) {
   return (
     <div
-      className={`relative group bg-card rounded-xl p-8 shadow-md hover:shadow-xl transition-all duration-300 border-2 cursor-pointer ${
+      className={`relative group bg-card rounded-xl p-5 sm:p-6 md:p-8 shadow-md hover:shadow-xl transition-all duration-300 border-2 cursor-pointer ${
         isSelected ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'
       }`}
       onClick={onCardSelect}
@@ -41,9 +41,9 @@ export default function PaymentCard({
       {/* Content */}
       <div className="relative z-10">
         {/* Icon */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="w-16 h-16 bg-primary/10 rounded-lg flex items-center justify-center group-hover:bg-primary/20 transition-colors duration-300">
-            <Icon className="w-8 h-8 text-primary" />
+        <div className="flex items-center justify-between mb-5 sm:mb-6">
+          <div className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 bg-primary/10 rounded-lg flex items-center justify-center group-hover:bg-primary/20 transition-colors duration-300">
+            <Icon className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 text-primary" />
           </div>
           {isSelected && (
             <div className="w-6 h-6 bg-primary rounded-full flex items-center justify-center">
@@ -55,7 +55,7 @@ export default function PaymentCard({
         </div>
 
         {/* Title */}
-        <h2 className="text-lg md:text-xl font-bold text-foreground mb-3 whitespace-nowrap overflow-hidden text-ellipsis">
+        <h2 className="text-lg md:text-xl font-bold text-foreground mb-3 break-words leading-tight">
           {title}
         </h2>
 
@@ -68,9 +68,9 @@ export default function PaymentCard({
         <div className="w-12 h-1 bg-primary/20 rounded-full mb-6" />
 
         {/* Price */}
-        <div className="mb-8">
+        <div className="mb-6 sm:mb-8">
           <p className="text-sm text-muted-foreground mb-1">Price per person</p>
-          <p className="text-3xl md:text-4xl font-bold text-primary">
+          <p className="text-2xl sm:text-3xl md:text-4xl font-bold text-primary break-words">
             {price}
           </p>
         </div>
