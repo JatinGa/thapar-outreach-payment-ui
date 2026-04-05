@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { ChevronLeft, Loader2, Pencil, Plus, Save, X, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import TransactionLogSection from '@/components/admin/TransactionLogSection';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -825,7 +826,10 @@ function AdminPageContent() {
                         const newOptions = (editForm.available_options || []).includes(option)
                           ? (editForm.available_options || []).filter(o => o !== option)
                           : [...(editForm.available_options || []), option];
-                        setEditForm((prev) => ({ ...prev, available_options: newOptions }));
+                        setEditForm((prev) => {
+                          if (!prev) return prev;
+                          return { ...prev, available_options: newOptions };
+                        });
                       }}
                       className={`px-4 py-2 rounded-md border-2 font-medium transition-all ${
                         (editForm.available_options || []).includes(option)
@@ -1055,6 +1059,8 @@ function AdminPageContent() {
             </div>
           </section>
         )}
+
+        <TransactionLogSection fests={fests.map(({ fest_id, legal_name }) => ({ fest_id, legal_name }))} />
       </main>
     </div>
   );

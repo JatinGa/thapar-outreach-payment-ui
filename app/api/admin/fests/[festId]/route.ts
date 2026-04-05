@@ -1,7 +1,11 @@
 import { NextResponse } from 'next/server';
 
 function getBackendUrl(): string {
-  return process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
+  const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
+  if (!backendUrl) {
+    throw new Error('Missing NEXT_PUBLIC_BACKEND_URL in frontend .env.local');
+  }
+  return backendUrl;
 }
 
 function getAdminKey(): string {

@@ -23,29 +23,25 @@ function buildAdminHeaders(): HeadersInit {
   };
 }
 
-export async function POST(request: Request) {
+export async function GET(
+  request: Request,
+  { params }: { params: Promise<{ merchantOrderId: string }> }
+) {
   try {
-    const body = await request.json();
-    const { fest_ids } = body;
-
-    if (!Array.isArray(fest_ids) || fest_ids.length === 0) {
-      return NextResponse.json(
-        { detail: 'fest_ids must be a non-empty array' },
-        { status: 400 }
-      );
-    }
-
-    const response = await fetch(`${getBackendUrl()}/admin/fests/check-transactions`, {
-      method: 'POST',
-      headers: buildAdminHeaders(),
-      body: JSON.stringify({ fest_ids }),
-      cache: 'no-store',
-    });
+    const { merchantOrderId } = await params;
+    const response = await fetch(
+      `${getBackendUrl()}/admin/transactions/${encodeURIComponent(merchantOrderId)}`,
+      {
+        method: 'GET',
+        headers: buildAdminHeaders(),
+        cache: 'no-store',
+      }
+    );
 
     const data = await response.json().catch(() => ({}));
     if (!response.ok) {
       return NextResponse.json(
-        { detail: data.detail || `Failed to check transactions (${response.status})` },
+        { detail: data.detail || `Failed to load transaction (${response.status})` },
         { status: response.status }
       );
     }

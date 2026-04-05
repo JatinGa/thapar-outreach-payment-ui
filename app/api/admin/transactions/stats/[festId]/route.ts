@@ -23,29 +23,29 @@ function buildAdminHeaders(): HeadersInit {
   };
 }
 
-export async function POST(request: Request) {
+export async function GET(
+  request: Request,
+  { params }: { params: Promise<{ festId: string }> }
+) {
   try {
-    const body = await request.json();
-    const { fest_ids } = body;
+    const { festId } = await params;
+    const url = new URL(request.url);
+    const eventId = url.searchParams.get('eventId');
+    const queryString = eventId ? `?eventId=${encodeURIComponent(eventId)}` : '';
 
-    if (!Array.isArray(fest_ids) || fest_ids.length === 0) {
-      return NextResponse.json(
-        { detail: 'fest_ids must be a non-empty array' },
-        { status: 400 }
-      );
-    }
-
-    const response = await fetch(`${getBackendUrl()}/admin/fests/check-transactions`, {
-      method: 'POST',
-      headers: buildAdminHeaders(),
-      body: JSON.stringify({ fest_ids }),
-      cache: 'no-store',
-    });
+    const response = await fetch(
+      `${getBackendUrl()}/admin/transactions/stats/${encodeURIComponent(festId)}${queryString}`,
+      {
+        method: 'GET',
+        headers: buildAdminHeaders(),
+        cache: 'no-store',
+      }
+    );
 
     const data = await response.json().catch(() => ({}));
     if (!response.ok) {
       return NextResponse.json(
-        { detail: data.detail || `Failed to check transactions (${response.status})` },
+        { detail: data.detail || `Failed to load transaction stats (${response.status})` },
         { status: response.status }
       );
     }
