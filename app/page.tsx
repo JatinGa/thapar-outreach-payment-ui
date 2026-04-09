@@ -40,7 +40,7 @@ export default function Home() {
   const [publicFests, setPublicFests] = useState<Fest[]>([]);
   const [selectedFest, setSelectedFest] = useState<Fest | null>(null);
   const [selectedOption, setSelectedOption] = useState<AccommodationOption | null>(null);
-  const [userDetails, setUserDetails] = useState({ name: '', state: '', district: '' });
+  const [userDetails, setUserDetails] = useState({ name: '', phone: '+91', state: '', district: '' });
   const [selectedStateCode, setSelectedStateCode] = useState('');
   const [activePaymentOptionId, setActivePaymentOptionId] = useState<string | null>(null);
   const [paymentError, setPaymentError] = useState<string | null>(null);
@@ -153,8 +153,15 @@ export default function Home() {
       return;
     }
 
-    if (!userDetails.name || !userDetails.state || !userDetails.district) {
+    const normalizedPhone = userDetails.phone.replace(/\s+/g, '');
+    if (!userDetails.name || !userDetails.state || !userDetails.district || !normalizedPhone) {
       setPaymentError('Please fill in all required fields');
+      setActivePaymentOptionId(null);
+      return;
+    }
+
+    if (!/^\+91\d{10}$/.test(normalizedPhone)) {
+      setPaymentError('Please enter a valid phone number in +91XXXXXXXXXX format');
       setActivePaymentOptionId(null);
       return;
     }
@@ -185,6 +192,7 @@ export default function Home() {
             }
           : {}),
         user_name: userDetails.name,
+        user_phone: normalizedPhone,
         user_state: userDetails.state,
         user_district: userDetails.district,
         booking,
@@ -554,6 +562,30 @@ export default function Home() {
                           onChange={(e) => setUserDetails({ ...userDetails, name: e.target.value })}
                           className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                         />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-foreground mb-2">Phone Number (+91) *</label>
+                        <input
+                          type="tel"
+                          inputMode="numeric"
+                          placeholder="+91XXXXXXXXXX"
+                          value={userDetails.phone}
+                          maxLength={13}
+                          onFocus={() => {
+                            if (!userDetails.phone) {
+                              setUserDetails((prev) => ({ ...prev, phone: '+91' }));
+                            }
+                          }}
+                          onChange={(e) => {
+                            const raw = e.target.value;
+                            const digits = raw.replace(/\D/g, '');
+                            const local = digits.startsWith('91') ? digits.slice(2, 12) : digits.slice(0, 10);
+                            const formatted = `+91${local}`;
+                            setUserDetails((prev) => ({ ...prev, phone: formatted }));
+                          }}
+                          className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                        />
+                        <p className="mt-1 text-xs text-muted-foreground">Enter 10 digit mobile number after +91</p>
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-foreground mb-2">State *</label>

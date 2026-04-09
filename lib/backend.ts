@@ -47,6 +47,7 @@ export interface PaymentInitiateRequest {
   launch_sig?: string;
   source?: 'fest_redirect' | 'direct_portal';
   user_name: string;
+  user_phone: string;
   user_state: string;
   user_district: string;
   booking: BookingDetail;
