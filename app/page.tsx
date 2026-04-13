@@ -6,7 +6,7 @@ import { Bed, UtensilsCrossed, ChevronRight, Info, X } from 'lucide-react';
 import { getAllStates, getDistricts } from 'india-state-district';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import { fetchFests, fetchFest, initiatePayment, checkBackendHealth, verifyLaunch, LaunchVerifyError, Fest, BookingDetail } from '@/lib/backend';
+import { fetchFests, fetchFest, initiatePayment, checkBackendHealth, verifyLaunch, LaunchVerifyError, Fest, BookingDetail, FestEvent } from '@/lib/backend';
 
 const PaymentCard = dynamic(() => import('@/components/PaymentCard'), {
   loading: () => (
@@ -40,7 +40,8 @@ export default function Home() {
   const [publicFests, setPublicFests] = useState<Fest[]>([]);
   const [selectedFest, setSelectedFest] = useState<Fest | null>(null);
   const [selectedOption, setSelectedOption] = useState<AccommodationOption | null>(null);
-  const [userDetails, setUserDetails] = useState({ name: '', phone: '+91', state: '', district: '' });
+  const [userDetails, setUserDetails] = useState({ name: '', email: '', phone: '+91', state: '', district: '' });
+  const [selectedEvents, setSelectedEvents] = useState<string[]>([]);
   const [selectedStateCode, setSelectedStateCode] = useState('');
   const [activePaymentOptionId, setActivePaymentOptionId] = useState<string | null>(null);
   const [paymentError, setPaymentError] = useState<string | null>(null);
@@ -155,14 +156,28 @@ export default function Home() {
     }
 
     const normalizedPhone = userDetails.phone.replace(/\s+/g, '');
-    if (!userDetails.name || !userDetails.state || !userDetails.district || !normalizedPhone) {
+    if (!userDetails.name || !userDetails.email || !userDetails.state || !userDetails.district || !normalizedPhone) {
       setPaymentError('Please fill in all required fields');
+      setActivePaymentOptionId(null);
+      return;
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(userDetails.email)) {
+      setPaymentError('Please enter a valid email address');
       setActivePaymentOptionId(null);
       return;
     }
 
     if (!/^\+91\d{10}$/.test(normalizedPhone)) {
       setPaymentError('Please enter a valid phone number in +91XXXXXXXXXX format');
+      setActivePaymentOptionId(null);
+      return;
+    }
+
+    // Event selection validation
+    const eventCfg = selectedFest.event_selection;
+    if (eventCfg?.enabled && eventCfg?.required && selectedEvents.length === 0) {
+      setPaymentError('Please select at least one event before proceeding.');
       setActivePaymentOptionId(null);
       return;
     }
@@ -193,10 +208,12 @@ export default function Home() {
             }
           : {}),
         user_name: userDetails.name,
+        user_email: userDetails.email,
         user_phone: normalizedPhone,
         user_state: userDetails.state,
         user_district: userDetails.district,
         booking,
+        selected_events: selectedEvents,
       });
 
       if (typeof window !== 'undefined') {
@@ -259,6 +276,7 @@ export default function Home() {
 
   const handleOptionSelect = (option: AccommodationOption) => {
     setSelectedOption(option);
+    setSelectedEvents([]);
     setPaymentError(null);
 
     // The details form renders conditionally; wait for the next paint before scrolling.
@@ -640,6 +658,16 @@ export default function Home() {
                         />
                       </div>
                       <div>
+                        <label className="block text-sm font-medium text-foreground mb-2">Email Address *</label>
+                        <input
+                          type="email"
+                          placeholder="you@example.com"
+                          value={userDetails.email}
+                          onChange={(e) => setUserDetails({ ...userDetails, email: e.target.value })}
+                          className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                        />
+                      </div>
+                      <div>
                         <label className="block text-sm font-medium text-foreground mb-2">Phone Number (+91) *</label>
                         <input
                           type="tel"
@@ -704,6 +732,63 @@ export default function Home() {
                         </select>
                       </div>
                     </div>
+
+                    {/* Event Selection — shown only when the fest has event_selection enabled */}
+                    {selectedFest.event_selection?.enabled && (selectedFest.events?.length ?? 0) > 0 && (
+                      <div className="mt-2 pt-4 border-t border-border">
+                        <label className="block text-sm font-medium text-foreground mb-1">
+                          Select Events
+                          {selectedFest.event_selection.required && (
+                            <span className="ml-1 text-destructive">*</span>
+                          )}
+                        </label>
+                        <p className="text-xs text-muted-foreground mb-3">
+                          {selectedFest.event_selection.required ? 'Required. ' : ''}
+                          {selectedFest.event_selection.max_selections === 1
+                            ? 'Select 1 event.'
+                            : `Select up to ${selectedFest.event_selection.max_selections} events.`}
+                        </p>
+                        <div className="space-y-2">
+                          {(selectedFest.events ?? []).map((ev: FestEvent) => {
+                            const isChecked = selectedEvents.includes(ev.event_id);
+                            const maxReached = selectedEvents.length >= (selectedFest.event_selection?.max_selections ?? 1);
+                            return (
+                              <label
+                                key={ev.event_id}
+                                className={`flex items-start gap-3 rounded-lg border p-3 cursor-pointer transition-colors ${
+                                  isChecked
+                                    ? 'border-primary bg-primary/5'
+                                    : maxReached && !isChecked
+                                    ? 'border-border opacity-50 cursor-not-allowed'
+                                    : 'border-border hover:border-primary/50'
+                                }`}
+                              >
+                                <input
+                                  type="checkbox"
+                                  className="mt-0.5 accent-primary"
+                                  checked={isChecked}
+                                  disabled={maxReached && !isChecked}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setSelectedEvents((prev) => [...prev, ev.event_id]);
+                                    } else {
+                                      setSelectedEvents((prev) => prev.filter((id) => id !== ev.event_id));
+                                    }
+                                  }}
+                                />
+                                <div>
+                                  <p className="text-sm font-medium text-foreground">{ev.name}</p>
+                                  {ev.description && (
+                                    <p className="text-xs text-muted-foreground mt-0.5">{ev.description}</p>
+                                  )}
+                                </div>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
                     <button
                       onClick={() => {
                         if (!selectedOption) {

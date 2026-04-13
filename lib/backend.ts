@@ -19,6 +19,18 @@ export interface PricingConfig {
   gst_percent: string;
 }
 
+export interface FestEvent {
+  event_id: string;
+  name: string;
+  description?: string;
+}
+
+export interface EventSelectionConfig {
+  enabled: boolean;
+  required: boolean;
+  max_selections: number;
+}
+
 export interface Fest {
   fest_id: string;
   legal_name: string;
@@ -31,6 +43,8 @@ export interface Fest {
   accommodation_per_day?: string;
   food_per_day?: string;
   bundled_price?: string;
+  events?: FestEvent[];
+  event_selection?: EventSelectionConfig;
 }
 
 export interface BookingDetail {
@@ -47,10 +61,12 @@ export interface PaymentInitiateRequest {
   launch_sig?: string;
   source?: 'fest_redirect' | 'direct_portal';
   user_name: string;
+  user_email: string;
   user_phone: string;
   user_state: string;
   user_district: string;
   booking: BookingDetail;
+  selected_events?: string[];
   coupon_code?: string | null;
 }
 
@@ -104,6 +120,8 @@ export interface AdminFest {
   authorized_url: string;
   callback_url: string;
   pricing: PricingConfig;
+  events?: FestEvent[];
+  event_selection?: EventSelectionConfig;
   created_at: string;
 }
 
@@ -284,4 +302,85 @@ export async function createAdminFest(payload: AdminFestCreateRequest): Promise<
   }
 
   return await response.json();
+}
+
+// ---------------------------------------------------------------------------
+// Event management
+// ---------------------------------------------------------------------------
+
+export async function addFestEvent(
+  festId: string,
+  name: string,
+  description?: string
+): Promise<AdminFest> {
+  const response = await fetch(`/api/admin/fests/${encodeURIComponent(festId)}/events`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, description }),
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.detail || `Failed to add event (${response.status})`);
+  }
+
+  return data;
+}
+
+export async function updateFestEvent(
+  festId: string,
+  eventId: string,
+  name?: string,
+  description?: string
+): Promise<AdminFest> {
+  const response = await fetch(
+    `/api/admin/fests/${encodeURIComponent(festId)}/events/${encodeURIComponent(eventId)}`,
+    {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, description }),
+    }
+  );
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.detail || `Failed to update event (${response.status})`);
+  }
+
+  return data;
+}
+
+export async function deleteFestEvent(festId: string, eventId: string): Promise<AdminFest> {
+  const response = await fetch(
+    `/api/admin/fests/${encodeURIComponent(festId)}/events/${encodeURIComponent(eventId)}`,
+    {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+    }
+  );
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.detail || `Failed to delete event (${response.status})`);
+  }
+
+  return data;
+}
+
+export async function updateEventSelectionConfig(
+  festId: string,
+  config: { enabled: boolean; required: boolean; max_selections: number }
+): Promise<AdminFest> {
+  const response = await fetch(`/api/admin/fests/${encodeURIComponent(festId)}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ event_selection: config }),
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.detail || `Failed to update event selection config (${response.status})`);
+  }
+
+  return data;
 }

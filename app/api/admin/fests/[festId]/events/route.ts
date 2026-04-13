@@ -23,31 +23,30 @@ function buildAdminHeaders(): HeadersInit {
   };
 }
 
-export async function GET(
+export async function POST(
   request: Request,
   { params }: { params: Promise<{ festId: string }> }
 ) {
   try {
     const { festId } = await params;
+    const payload = await request.json();
+
     const response = await fetch(`${getBackendUrl()}/admin/fests/${encodeURIComponent(festId)}/events`, {
-      method: 'GET',
+      method: 'POST',
       headers: buildAdminHeaders(),
+      body: JSON.stringify(payload),
       cache: 'no-store',
     });
-
-    if (response.status === 404) {
-      return NextResponse.json({ events: [], total: 0 }, { status: 200 });
-    }
 
     const data = await response.json().catch(() => ({}));
     if (!response.ok) {
       return NextResponse.json(
-        { detail: data.detail || `Failed to load events (${response.status})` },
+        { detail: data.detail || `Failed to add event (${response.status})` },
         { status: response.status }
       );
     }
 
-    return NextResponse.json(data, { status: 200 });
+    return NextResponse.json(data, { status: 201 });
   } catch (error) {
     return NextResponse.json(
       { detail: error instanceof Error ? error.message : 'Unexpected server error' },

@@ -31,6 +31,18 @@ type PricingConfig = {
   gst_percent: string;
 };
 
+type FestEvent = {
+  event_id: string;
+  name: string;
+  description?: string;
+};
+
+type EventSelectionConfig = {
+  enabled: boolean;
+  required: boolean;
+  max_selections: number;
+};
+
 type AdminFest = {
   fest_id: string;
   legal_name: string;
@@ -41,6 +53,8 @@ type AdminFest = {
   callback_url: string;
   pricing: PricingConfig;
   available_options: string[];
+  events: FestEvent[];
+  event_selection: EventSelectionConfig;
   created_at: string;
 };
 
@@ -65,6 +79,7 @@ type AdminFestUpdateRequest = {
   callback_url: string;
   pricing: PricingConfig;
   available_options?: string[];
+  event_selection?: EventSelectionConfig;
 };
 
 const AdminProtect = dynamic(() => import('@/components/admin/AdminProtect'), {
@@ -105,6 +120,7 @@ function AdminFestsContent() {
   const [form, setForm] = useState<AdminFestCreateRequest>(INITIAL_FORM);
   const [editingFestId, setEditingFestId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<AdminFestUpdateRequest | null>(null);
+  const [editingFest, setEditingFest] = useState<AdminFest | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [savingFest, setSavingFest] = useState(false);
@@ -114,6 +130,12 @@ function AdminFestsContent() {
   const [deleting, setDeleting] = useState(false);
   const [festsWithTransactions, setFestsWithTransactions] = useState<Set<string>>(new Set());
   const editSectionRef = useRef<HTMLElement | null>(null);
+
+  // Event management state
+  const [newEventName, setNewEventName] = useState('');
+  const [newEventDesc, setNewEventDesc] = useState('');
+  const [addingEvent, setAddingEvent] = useState(false);
+  const [deletingEventId, setDeletingEventId] = useState<string | null>(null);
 
   const updatePricingMode = (target: 'create' | 'edit', mode: PricingConfig['mode']) => {
     const basePricing: PricingConfig = {
@@ -163,6 +185,14 @@ function AdminFestsContent() {
     }
   }, [editingFestId]);
 
+  // Keep editingFest in sync with the fests list (e.g. after adding an event)
+  useEffect(() => {
+    if (editingFestId) {
+      const fresh = fests.find((f) => f.fest_id === editingFestId) ?? null;
+      setEditingFest(fresh);
+    }
+  }, [fests, editingFestId]);
+
   const handleCreateFest = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
@@ -192,6 +222,7 @@ function AdminFestsContent() {
 
   const beginEditFest = (fest: AdminFest) => {
     setEditingFestId(fest.fest_id);
+    setEditingFest(fest);
     setEditForm({
       legal_name: fest.legal_name,
       event_dates: fest.event_dates || '',
@@ -201,7 +232,10 @@ function AdminFestsContent() {
       callback_url: fest.callback_url,
       pricing: fest.pricing,
       available_options: fest.available_options || ['accommodation', 'food', 'bundled'],
+      event_selection: fest.event_selection || { enabled: false, required: false, max_selections: 1 },
     });
+    setNewEventName('');
+    setNewEventDesc('');
     setError(null);
     setSuccess(null);
   };
@@ -209,6 +243,7 @@ function AdminFestsContent() {
   const cancelEditFest = () => {
     setEditingFestId(null);
     setEditForm(null);
+    setEditingFest(null);
   };
 
   const handleSaveFest = async () => {
@@ -252,6 +287,47 @@ function AdminFestsContent() {
       setError(e instanceof Error ? e.message : 'Failed to delete fest');
     } finally {
       setDeleting(false);
+    }
+  };
+
+  const handleAddEvent = async () => {
+    if (!editingFestId || !newEventName.trim()) return;
+    setAddingEvent(true);
+    setError(null);
+    try {
+      const response = await fetch(`/api/admin/fests/${encodeURIComponent(editingFestId)}/events`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newEventName.trim(), description: newEventDesc.trim() || undefined }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.detail || `Failed to add event (${response.status})`);
+      setNewEventName('');
+      setNewEventDesc('');
+      await loadFests();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to add event');
+    } finally {
+      setAddingEvent(false);
+    }
+  };
+
+  const handleDeleteEvent = async (eventId: string) => {
+    if (!editingFestId) return;
+    setDeletingEventId(eventId);
+    setError(null);
+    try {
+      const response = await fetch(
+        `/api/admin/fests/${encodeURIComponent(editingFestId)}/events/${encodeURIComponent(eventId)}`,
+        { method: 'DELETE', headers: { 'Content-Type': 'application/json' } }
+      );
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.detail || `Failed to delete event (${response.status})`);
+      await loadFests();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to delete event');
+    } finally {
+      setDeletingEventId(null);
     }
   };
 
@@ -571,6 +647,12 @@ function AdminFestsContent() {
                       {fest.event_dates && <span>Dates: {fest.event_dates}</span>}
                       <span>Pricing: {fest.pricing.mode}</span>
                       <span>GST: {fest.pricing.gst_percent}%</span>
+                      {fest.events?.length > 0 && <span>{fest.events.length} event{fest.events.length !== 1 ? 's' : ''}</span>}
+                      {fest.event_selection?.enabled && (
+                        <span className="text-primary">
+                          Events: {fest.event_selection.required ? 'required' : 'optional'}, max {fest.event_selection.max_selections}
+                        </span>
+                      )}
                     </div>
                     {fest.short_description && (
                       <p className="mt-2 text-xs text-muted-foreground line-clamp-2">{fest.short_description}</p>
@@ -750,7 +832,145 @@ function AdminFestsContent() {
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
+            {/* ── Event Selection Config ── */}
+            <div className="mt-6 mb-4 border-t border-border pt-6">
+              <h3 className="text-base font-semibold text-foreground mb-1">Event Selection</h3>
+              <p className="text-xs text-muted-foreground mb-4">
+                When enabled, users will see a list of events to select from during payment.
+              </p>
+              <div className="space-y-3">
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="w-4 h-4 accent-primary"
+                    checked={editForm.event_selection?.enabled ?? false}
+                    onChange={(e) =>
+                      setEditForm((prev) =>
+                        prev
+                          ? { ...prev, event_selection: { ...((prev.event_selection) || { required: false, max_selections: 1 }), enabled: e.target.checked } }
+                          : prev
+                      )
+                    }
+                  />
+                  <span className="text-sm font-medium text-foreground">Enable event selection</span>
+                </label>
+                {editForm.event_selection?.enabled && (
+                  <>
+                    <label className="flex items-center gap-3 cursor-pointer ml-7">
+                      <input
+                        type="checkbox"
+                        className="w-4 h-4 accent-primary"
+                        checked={editForm.event_selection?.required ?? false}
+                        onChange={(e) =>
+                          setEditForm((prev) =>
+                            prev
+                              ? { ...prev, event_selection: { ...(prev.event_selection!), required: e.target.checked } }
+                              : prev
+                          )
+                        }
+                      />
+                      <span className="text-sm text-foreground">Make selection required</span>
+                    </label>
+                    <div className="ml-7 flex items-center gap-3">
+                      <label className="text-sm text-foreground whitespace-nowrap">Max events per person:</label>
+                      <input
+                        type="number"
+                        min={1}
+                        max={100}
+                        value={editForm.event_selection?.max_selections ?? 1}
+                        onChange={(e) =>
+                          setEditForm((prev) =>
+                            prev
+                              ? { ...prev, event_selection: { ...(prev.event_selection!), max_selections: Number(e.target.value) || 1 } }
+                              : prev
+                          )
+                        }
+                        className="w-20 px-3 py-1.5 rounded-md border border-border bg-background text-sm"
+                      />
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* ── Events List & Management ── */}
+            <div className="mt-4 mb-6 border-t border-border pt-6">
+              <h3 className="text-base font-semibold text-foreground mb-1">Events</h3>
+              <p className="text-xs text-muted-foreground mb-4">
+                Add events that attendees can select from during payment.
+              </p>
+
+              {/* Existing events */}
+              {(editingFest?.events?.length ?? 0) > 0 ? (
+                <div className="space-y-2 mb-4">
+                  {editingFest!.events.map((ev) => (
+                    <div
+                      key={ev.event_id}
+                      className="flex items-start gap-3 rounded-lg border border-border p-3 bg-background"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-foreground">{ev.name}</p>
+                        {ev.description && (
+                          <p className="text-xs text-muted-foreground mt-0.5">{ev.description}</p>
+                        )}
+                        <p className="text-[10px] font-mono text-muted-foreground mt-1">{ev.event_id}</p>
+                      </div>
+                      <button
+                        type="button"
+                        disabled={deletingEventId === ev.event_id}
+                        onClick={() => handleDeleteEvent(ev.event_id)}
+                        className="flex-shrink-0 p-1.5 rounded-md text-destructive hover:bg-destructive/10 disabled:opacity-50 transition-colors"
+                        title="Delete event"
+                      >
+                        {deletingEventId === ev.event_id ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <Trash2 className="w-3.5 h-3.5" />
+                        )}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground mb-4">No events yet. Add one below.</p>
+              )}
+
+              {/* Add event form */}
+              <div className="rounded-lg border border-dashed border-border p-4 space-y-3">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Add Event</p>
+                <div>
+                  <label className="block text-xs font-medium mb-1">Event Name *</label>
+                  <input
+                    value={newEventName}
+                    onChange={(e) => setNewEventName(e.target.value)}
+                    placeholder="e.g. DJ Night, Coding Contest"
+                    className={inputClass()}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium mb-1">Description (optional)</label>
+                  <input
+                    value={newEventDesc}
+                    onChange={(e) => setNewEventDesc(e.target.value)}
+                    placeholder="Short description of the event"
+                    className={inputClass()}
+                  />
+                </div>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={handleAddEvent}
+                  disabled={addingEvent || !newEventName.trim()}
+                  className="gap-2"
+                >
+                  {addingEvent ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+                  {addingEvent ? 'Adding...' : 'Add Event'}
+                </Button>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 border-t border-border pt-6">
               <Button onClick={handleSaveFest} disabled={savingFest} className="gap-2">
                 {savingFest ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                 {savingFest ? 'Saving...' : 'Save Changes'}

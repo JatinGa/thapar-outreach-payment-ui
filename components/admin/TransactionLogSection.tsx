@@ -27,14 +27,17 @@ type PaymentIntentions = {
   };
   accommodation?: {
     totalAmount?: number;
+    days?: number;
   };
   food?: {
     totalAmount?: number;
+    days?: number;
   };
 };
 
 type AdminTransaction = {
   merchantOrderId: string;
+  easebuzzTxid?: string;
   festId: string;
   eventId?: string;
   teamId?: string;
@@ -42,16 +45,31 @@ type AdminTransaction = {
   userName?: string;
   userEmail?: string;
   userPhone?: string;
+  userState?: string;
+  userDistrict?: string;
   collegeName?: string;
   paymentType?: string;
+  paymentMode?: string;
+  selectedEvents?: string[];
   status?: 'pending' | 'success' | 'failed' | string;
   callbackStatus?: 'pending' | 'sent' | 'failed' | 'skipped' | string;
   originalAmount?: number;
+  gstAmount?: number;
+  easebuzzFee?: number;
   finalAmount?: number;
+  couponDiscount?: number;
+  couponCode?: string;
   createdAt?: string;
   completedAt?: string;
   callbackAttempts?: number;
   callbackLastError?: string | null;
+  notificationLogs?: Array<{
+    attempt: number;
+    timestamp: string;
+    http_status?: number;
+    response_body?: string;
+    error?: string;
+  }>;
   paymentIntentions?: PaymentIntentions;
 };
 
@@ -403,45 +421,53 @@ export default function TransactionLogSection({ fests }: TransactionLogSectionPr
 
           {selectedTransaction ? (
             <div className="mt-4 space-y-4">
-              <div>
+              <div className="flex flex-wrap gap-2">
                 <Badge variant="default">{selectedTransaction.status || 'success'}</Badge>
+                {selectedTransaction.paymentMode && (
+                  <Badge variant="outline">{selectedTransaction.paymentMode}</Badge>
+                )}
               </div>
 
+              {/* Order IDs */}
               <div className="rounded-lg border border-border bg-background p-3 text-sm space-y-3">
                 <div>
-                  <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Order ID</p>
+                  <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Internal Order ID</p>
                   <p className="mt-1 break-all font-mono text-xs text-foreground">{selectedTransaction.merchantOrderId}</p>
                 </div>
-                <div>
-                  <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Event</p>
-                  <p className="mt-1 text-foreground">
-                    {selectedTransaction.eventId || selectedTransaction.paymentIntentions?.eventRegistration?.eventId || '-'}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Participant</p>
-                  <p className="mt-1 text-foreground">
-                    {selectedTransaction.teamName || selectedTransaction.userName || selectedTransaction.userEmail || '-'}
-                  </p>
-                </div>
-                {(selectedTransaction.userPhone || selectedTransaction.collegeName) && (
+                {selectedTransaction.easebuzzTxid && (
                   <div>
-                    <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Contact / College</p>
+                    <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">EaseBuzz Txn ID</p>
+                    <p className="mt-1 break-all font-mono text-xs text-foreground">{selectedTransaction.easebuzzTxid}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Participant */}
+              <div className="rounded-lg border border-border bg-background p-3 text-sm space-y-3">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Name</p>
+                  <p className="mt-1 text-foreground">{selectedTransaction.userName || '-'}</p>
+                </div>
+                {selectedTransaction.userEmail && (
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Email</p>
+                    <p className="mt-1 text-foreground">{selectedTransaction.userEmail}</p>
+                  </div>
+                )}
+                {selectedTransaction.userPhone && (
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Phone</p>
+                    <p className="mt-1 text-foreground">{selectedTransaction.userPhone}</p>
+                  </div>
+                )}
+                {(selectedTransaction.userState || selectedTransaction.userDistrict) && (
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Location</p>
                     <p className="mt-1 text-foreground">
-                      {selectedTransaction.userPhone || '-'}{selectedTransaction.collegeName ? ` · ${selectedTransaction.collegeName}` : ''}
+                      {[selectedTransaction.userDistrict, selectedTransaction.userState].filter(Boolean).join(', ')}
                     </p>
                   </div>
                 )}
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Final amount</p>
-                    <p className="mt-1 font-semibold text-foreground">{formatAmount(selectedTransaction.finalAmount)}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Type</p>
-                    <p className="mt-1 text-foreground">{selectedTransaction.paymentType || '-'}</p>
-                  </div>
-                </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Created</p>
@@ -454,21 +480,77 @@ export default function TransactionLogSection({ fests }: TransactionLogSectionPr
                 </div>
               </div>
 
+              {/* Selected Events */}
+              {(selectedTransaction.selectedEvents?.length ?? 0) > 0 && (
+                <div className="rounded-lg border border-border bg-background p-3 text-sm">
+                  <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground mb-2">Selected Events</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {selectedTransaction.selectedEvents!.map((eid) => (
+                      <span key={eid} className="px-2 py-0.5 bg-primary/10 text-primary rounded text-xs font-mono">
+                        {eid}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Financials */}
               <div className="rounded-lg border border-border bg-background p-3 text-sm">
-                <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground mb-3">Payment split</p>
+                <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground mb-3">Financials</p>
                 <div className="space-y-1 text-foreground">
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Event</span>
-                    <span>{formatAmount(selectedTransaction.paymentIntentions?.eventRegistration?.amount)}</span>
+                    <span className="text-muted-foreground">Base amount</span>
+                    <span>{formatAmount(selectedTransaction.originalAmount)}</span>
                   </div>
+                  {(selectedTransaction.couponDiscount ?? 0) > 0 && (
+                    <div className="flex justify-between text-green-600 dark:text-green-400">
+                      <span>Coupon discount{selectedTransaction.couponCode ? ` (${selectedTransaction.couponCode})` : ''}</span>
+                      <span>-{formatAmount(selectedTransaction.couponDiscount)}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Accommodation</span>
-                    <span>{formatAmount(selectedTransaction.paymentIntentions?.accommodation?.totalAmount)}</span>
+                    <span className="text-muted-foreground">GST</span>
+                    <span>{formatAmount(selectedTransaction.gstAmount)}</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Food</span>
-                    <span>{formatAmount(selectedTransaction.paymentIntentions?.food?.totalAmount)}</span>
+                  <div className="flex justify-between border-t border-border pt-1 mt-1 font-medium">
+                    <span>Charged to user</span>
+                    <span>{formatAmount(
+                      (selectedTransaction.originalAmount ?? 0) -
+                      (selectedTransaction.couponDiscount ?? 0) +
+                      (selectedTransaction.gstAmount ?? 0)
+                    )}</span>
                   </div>
+                  <div className="flex justify-between text-muted-foreground text-xs">
+                    <span>EaseBuzz fee{selectedTransaction.paymentMode ? ` (${selectedTransaction.paymentMode})` : ''}</span>
+                    <span>-{formatAmount(selectedTransaction.easebuzzFee)}</span>
+                  </div>
+                  <div className="flex justify-between font-semibold text-foreground border-t border-border pt-1 mt-1">
+                    <span>Net credited to fest</span>
+                    <span>{formatAmount(selectedTransaction.finalAmount)}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Booking split */}
+              <div className="rounded-lg border border-border bg-background p-3 text-sm">
+                <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground mb-3">Booking split</p>
+                <div className="space-y-1 text-foreground">
+                  {(selectedTransaction.paymentIntentions?.accommodation?.totalAmount ?? 0) > 0 && (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">
+                        Accommodation{selectedTransaction.paymentIntentions?.accommodation?.days ? ` (${selectedTransaction.paymentIntentions.accommodation.days}d)` : ''}
+                      </span>
+                      <span>{formatAmount(selectedTransaction.paymentIntentions?.accommodation?.totalAmount)}</span>
+                    </div>
+                  )}
+                  {(selectedTransaction.paymentIntentions?.food?.totalAmount ?? 0) > 0 && (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">
+                        Food{selectedTransaction.paymentIntentions?.food?.days ? ` (${selectedTransaction.paymentIntentions.food.days}d)` : ''}
+                      </span>
+                      <span>{formatAmount(selectedTransaction.paymentIntentions?.food?.totalAmount)}</span>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
