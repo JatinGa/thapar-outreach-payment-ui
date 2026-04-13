@@ -10,6 +10,10 @@ import TransactionLogSection from '@/components/admin/TransactionLogSection';
 type AdminFestSummary = {
   fest_id: string;
   legal_name: string;
+  events?: Array<{
+    event_id: string;
+    name: string;
+  }>;
 };
 
 const AdminProtect = dynamic(() => import('@/components/admin/AdminProtect'), {
@@ -93,7 +97,9 @@ function AdminPaymentsContent() {
             Loading fests...
           </div>
         ) : (
-          <TransactionLogSection fests={fests.map(({ fest_id, legal_name }) => ({ fest_id, legal_name }))} />
+          <TransactionLogSection
+            fests={fests.map(({ fest_id, legal_name, events }) => ({ fest_id, legal_name, events }))}
+          />
         )}
       </main>
     </div>

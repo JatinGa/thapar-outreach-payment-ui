@@ -15,6 +15,10 @@ import {
 type AdminFestSummary = {
   fest_id: string;
   legal_name: string;
+  events?: Array<{
+    event_id: string;
+    name: string;
+  }>;
 };
 
 type PaymentIntentions = {
@@ -129,6 +133,14 @@ export default function TransactionLogSection({ fests }: TransactionLogSectionPr
   const [selectedTransaction, setSelectedTransaction] = useState<AdminTransaction | null>(null);
 
   const selectedFest = fests.find((f) => f.fest_id === selectedFestId) ?? null;
+  const eventNameMap = new Map<string, string>();
+  for (const fest of fests) {
+    for (const ev of fest.events ?? []) {
+      eventNameMap.set(ev.event_id, ev.name);
+    }
+  }
+
+  const getEventLabel = (eventId: string): string => eventNameMap.get(eventId) ?? eventId;
 
   const sortedTransactions = [...transactions].sort((a, b) => {
     if (amountSort === 'none') return 0;
@@ -338,7 +350,14 @@ export default function TransactionLogSection({ fests }: TransactionLogSectionPr
                 ) : null}
 
                 {sortedTransactions.map((tx) => {
-                  const eventId = tx.eventId || tx.paymentIntentions?.eventRegistration?.eventId || '-';
+                  const fallbackEventId = tx.eventId || tx.paymentIntentions?.eventRegistration?.eventId || '';
+                  const selectedEventIds = tx.selectedEvents ?? [];
+                  const eventLabel =
+                    selectedEventIds.length > 0
+                      ? selectedEventIds.map(getEventLabel).join(', ')
+                      : fallbackEventId
+                        ? getEventLabel(fallbackEventId)
+                        : '-';
                   const personLabel = tx.teamName || tx.userName || tx.userEmail || '-';
 
                   return (
@@ -348,7 +367,7 @@ export default function TransactionLogSection({ fests }: TransactionLogSectionPr
                     >
                       <TableCell className="font-mono text-xs">{tx.merchantOrderId}</TableCell>
                       <TableCell>
-                        <span className="text-xs text-muted-foreground">{eventId}</span>
+                        <span className="text-xs text-muted-foreground">{eventLabel}</span>
                       </TableCell>
                       <TableCell>
                         <div className="flex flex-col">
@@ -486,8 +505,8 @@ export default function TransactionLogSection({ fests }: TransactionLogSectionPr
                   <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground mb-2">Selected Events</p>
                   <div className="flex flex-wrap gap-1.5">
                     {selectedTransaction.selectedEvents!.map((eid) => (
-                      <span key={eid} className="px-2 py-0.5 bg-primary/10 text-primary rounded text-xs font-mono">
-                        {eid}
+                      <span key={eid} className="px-2 py-0.5 bg-primary/10 text-primary rounded text-xs">
+                        {getEventLabel(eid)}
                       </span>
                     ))}
                   </div>
