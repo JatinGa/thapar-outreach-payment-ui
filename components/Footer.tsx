@@ -99,6 +99,14 @@ export default function Footer() {
               </div>
             </div>
           </div>
+
+          {/* Built By */}
+          <div className="border-t border-border/50 pt-4 flex items-center justify-center md:justify-start">
+            <p className="text-xs text-foreground/50 tracking-widest uppercase font-medium">
+              Built with care by{' '}
+              <span className="text-foreground/80 font-semibold tracking-wide">Team CCS</span>
+            </p>
+          </div>
         </div>
       </div>
     </footer>

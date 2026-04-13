@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
-import { Bed, UtensilsCrossed, ChevronRight } from 'lucide-react';
+import { Bed, UtensilsCrossed, ChevronRight, Info, X } from 'lucide-react';
 import { getAllStates, getDistricts } from 'india-state-district';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
@@ -47,6 +47,7 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [backendReady, setBackendReady] = useState(false);
   const [loginRedirectUrl, setLoginRedirectUrl] = useState('https://accommodationstiet.shop');
+  const [showInstructions, setShowInstructions] = useState(false);
   const [launchContext, setLaunchContext] = useState<{
     origin_user_id: string;
     launch_exp?: number;
@@ -436,11 +437,86 @@ export default function Home() {
         <div className="w-full max-w-6xl">
           {!selectedFest ? (
             <>
+              {/* Instruction Modal */}
+              {showInstructions && (
+                <div
+                  className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4"
+                  onClick={() => setShowInstructions(false)}
+                >
+                  <div
+                    className="relative bg-card border border-border rounded-2xl shadow-2xl w-full max-w-md p-6 sm:p-8"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <button
+                      onClick={() => setShowInstructions(false)}
+                      className="absolute top-4 right-4 p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                      aria-label="Close"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+
+                    <div className="flex items-center gap-3 mb-5">
+                      <div className="flex-shrink-0 w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center">
+                        <Info className="w-4 h-4 text-primary" />
+                      </div>
+                      <h2 className="text-lg font-semibold text-foreground">How to Avail Accommodation</h2>
+                    </div>
+
+                    <ol className="space-y-4">
+                      <li className="flex gap-3">
+                        <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center mt-0.5">1</span>
+                        <div>
+                          <p className="font-medium text-foreground text-sm">Go to the Fest Website</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">Visit the official website of the fest you are participating in.</p>
+                        </div>
+                      </li>
+                      <li className="flex gap-3">
+                        <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center mt-0.5">2</span>
+                        <div>
+                          <p className="font-medium text-foreground text-sm">Register for Your Event</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">Complete your event registration on the fest website before proceeding.</p>
+                        </div>
+                      </li>
+                      <li className="flex gap-3">
+                        <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center mt-0.5">3</span>
+                        <div>
+                          <p className="font-medium text-foreground text-sm">Click &ldquo;Avail Accommodation&rdquo;</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">Find and click the &ldquo;Avail Accommodation&rdquo; button on the fest website. You will be automatically redirected back here.</p>
+                        </div>
+                      </li>
+                      <li className="flex gap-3">
+                        <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center mt-0.5">4</span>
+                        <div>
+                          <p className="font-medium text-foreground text-sm">Complete Your Payment</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">Select your accommodation or food plan and proceed to secure payment.</p>
+                        </div>
+                      </li>
+                    </ol>
+
+                    <div className="mt-5 rounded-lg bg-destructive/8 border border-destructive/20 px-4 py-3">
+                      <p className="text-xs text-destructive font-medium">
+                        Direct payments are not allowed on this portal. You must arrive here via the &ldquo;Avail Accommodation&rdquo; link on your fest website.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Public Fest Listing Screen */}
               <div className="text-center mb-8 sm:mb-10 md:mb-12">
-                <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-foreground mb-3 sm:mb-4">
-                  Available Fests
-                </h1>
+                <div className="flex items-center justify-center gap-3 mb-3 sm:mb-4">
+                  <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-foreground">
+                    Available Fests
+                  </h1>
+                  <button
+                    onClick={() => setShowInstructions(true)}
+                    className="flex-shrink-0 w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-muted hover:bg-muted/80 border border-border flex items-center justify-center transition-colors"
+                    aria-label="How does this work?"
+                    title="How does this work?"
+                  >
+                    <Info className="w-4 h-4 text-muted-foreground" />
+                  </button>
+                </div>
                 <p className="text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto px-2">
                   Select a fest to continue on its official website.
                 </p>

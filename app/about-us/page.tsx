@@ -2,34 +2,57 @@ import PolicyPageLayout from '@/components/PolicyPageLayout';
 
 export default function AboutUsPage() {
   return (
-    <PolicyPageLayout title="About Us" lastUpdated="25 March 2026">
+    <PolicyPageLayout title="About Us" lastUpdated="13 April 2026">
+      <h2 className="text-xl font-semibold text-foreground mt-2 mb-3">
+        Thapar Institute of Engineering &amp; Technology
+      </h2>
       <p>
-        Helix is the premier annual cultural and technical festival of Thapar Institute of Engineering and
-        Technology (TIET), Patiala. Our festival represents more than just an event; it is a celebration of
-        creativity, innovation, and the vibrant spirit of our academic community. It serves as a platform where
-        students, faculty, and participants from across the nation come together to showcase their talents,
-        exchange ideas, and create lasting memories.
+        Thapar Institute of Engineering and Technology (TIET) is a premier private technical
+        university located in Patiala, Punjab, India. Established in 1956 and granted the
+        status of a Deemed University in 1985, TIET has grown into one of India's most respected
+        engineering institutions, consistently ranked among the top private engineering
+        universities in the country.
       </p>
 
       <p>
-        This website is the official portal for all Helix-related activities, registrations, and information.
-        It is managed and operated by the Helix organizing committee with great care and attention to
-        detail to provide you with a seamless and enjoyable experience. Our dedicated team works tirelessly to
-        ensure that every aspect of the festival, from registration to event participation, meets the highest
-        standards of quality and organization.
+        The institute is home to a vibrant academic community of over 12,000 students, offering
+        undergraduate, postgraduate, and doctoral programmes across disciplines including
+        engineering, technology, science, management, and humanities. TIET is known for its
+        world-class research facilities, strong industry partnerships, and a culture of
+        innovation and entrepreneurship.
+      </p>
+
+      <h2 className="text-xl font-semibold text-foreground mt-6 mb-3">
+        About This Portal
+      </h2>
+      <p>
+        This is the official Accommodation Payment Portal for events and fests hosted at Thapar
+        Institute of Engineering and Technology. It is designed to provide a seamless, secure,
+        and transparent experience for outstation participants who wish to book accommodation
+        and food services during their visit to campus.
       </p>
 
       <p>
-        Should you have any questions, feedback, or require support regarding any aspect of Helix,
-        please do not hesitate to reach out to us. Our team is here to assist you and ensure that your
-        experience with our festival is both positive and memorable.
+        Participants are redirected to this portal from their respective fest websites after
+        completing event registration. All payments are processed securely through Easebuzz,
+        a RBI-compliant payment gateway. No direct walk-in or off-portal payments are accepted
+        through this system.
+      </p>
+
+      <h2 className="text-xl font-semibold text-foreground mt-6 mb-3">
+        Built by Team CCS
+      </h2>
+      <p>
+        This portal is built and maintained by <strong>Team CCS</strong> — the technical team
+        at Thapar Institute responsible for developing and managing digital infrastructure for
+        campus events. The team ensures that every aspect of the portal, from registration
+        flows to payment handling, meets high standards of reliability and security.
       </p>
 
       <p>
-        We extend our heartfelt thanks to all participants, sponsors, and supporters who make Helix
-        possible. Together, we strive to create an environment that fosters creativity, learning, and cultural
-        exchange. Your participation helps us continue our mission of bringing together diverse talents and
-        celebrating the spirit of innovation.
+        Should you have any questions, face any issues, or require support, please reach out
+        to us through the contact details provided on this site. We are here to make your
+        campus visit experience as smooth as possible.
       </p>
     </PolicyPageLayout>
   );
