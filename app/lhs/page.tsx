@@ -126,6 +126,7 @@ export function TableData({ password, items, setItems }: { password: string; ite
               <TableHead>Email</TableHead>
               <TableHead>Phone Number</TableHead>
               <TableHead>City</TableHead>
+              <TableHead>Events</TableHead>
               <TableHead className="text-right">Accommodation Type</TableHead>
             </TableRow>
           </TableHeader>
@@ -142,6 +143,7 @@ export function TableData({ password, items, setItems }: { password: string; ite
                 <TableCell>{item.user_email}</TableCell>
                 <TableCell>{item.user_phone}</TableCell>
                 <TableCell>{item.city}</TableCell>
+                <TableCell>{item.events.join(', ')}</TableCell>
                 <TableCell className="text-right">{item.amount_paid.toString()}</TableCell>
               </TableRow>
             ))}
