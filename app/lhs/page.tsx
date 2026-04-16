@@ -238,10 +238,11 @@ function Protected({
 }
 
 export default function Page() {
-  const [password, setPassword] = useState('');
-  const [passwordSubmitted, setPasswordSubmitted] = useState(false)
+  const [password, setPassword] = useState(localStorage.getItem("password") ?? "");
+  const [passwordSubmitted, setPasswordSubmitted] = useState(localStorage.getItem("password") != null)
 
   async function verifyPassword() {
+    localStorage.setItem("password", password);
     setPasswordSubmitted(true);
   }
 
