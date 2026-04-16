@@ -205,7 +205,7 @@ function Protected({
           body: JSON.stringify({ password })
         });
         if (res.status >= 200 && res.status < 300) {
-          setEntries(await res.json());
+          setEntries(((await res.json()) as Entry[]).sort((a, b) => a.user_name.localeCompare(b.user_name)));
         } else {
           toast('Failed to fetch entries');
         }
