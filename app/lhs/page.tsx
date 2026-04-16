@@ -249,8 +249,16 @@ function Protected({
 }
 
 export default function Page() {
-  const [password, setPassword] = useState(localStorage.getItem("password") ?? "");
-  const [passwordSubmitted, setPasswordSubmitted] = useState(localStorage.getItem("password") != null)
+  const [password, setPassword] = useState("");
+  const [passwordSubmitted, setPasswordSubmitted] = useState(false);
+
+  useEffect(() => {
+    const stored = localStorage.getItem("password");
+    if (stored) {
+      setPassword(stored);
+      setPasswordSubmitted(true);
+    }
+  }, []);
 
   async function verifyPassword() {
     fetch('/api/lhs/checkpassword', {
