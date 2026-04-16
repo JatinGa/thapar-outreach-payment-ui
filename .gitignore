@@ -34,3 +34,13 @@ backen/
 realbackend/
 FRONTEND_INTEGRATION.md
 PAYMENT_OPTIONS.md
+# Devenv
+.devenv*
+devenv.local.nix
+devenv.local.yaml
+
+# direnv
+.direnv
+
+# pre-commit
+.pre-commit-config.yaml
