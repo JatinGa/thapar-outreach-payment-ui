@@ -12,7 +12,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { useEffect, useMemo, useState } from "react";
+import { cn } from "@/lib/utils";
+import { Dispatch, SetStateAction, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 type Entry = {
@@ -23,6 +24,7 @@ type Entry = {
   city : string; 
   events: string[]; 
   amount_paid:  number;
+  checked_in: boolean;
 };
 
 const fakeEntries: Entry[] = [
@@ -33,6 +35,7 @@ const fakeEntries: Entry[] = [
     user_phone: "+91 9876543210",
     city: "Chandigarh",
     amount_paid: 500,
+    checked_in: false,
     events: [],
   },
   {
@@ -42,6 +45,7 @@ const fakeEntries: Entry[] = [
     user_phone: "+91 9123456780",
     city: "Chandigarh",
     amount_paid: 1100,
+    checked_in: false,
     events: [],
   },
   {
@@ -51,6 +55,7 @@ const fakeEntries: Entry[] = [
     user_phone: "+91 9988776655",
     city: "Chandigarh",
     amount_paid: 500,
+    checked_in: false,
     events: [],
   },
   {
@@ -60,6 +65,7 @@ const fakeEntries: Entry[] = [
     user_phone: "+91 9090909090",
     city: "Chandigarh",
     amount_paid: 1100,
+    checked_in: false,
     events: [],
   },
   {
@@ -69,6 +75,7 @@ const fakeEntries: Entry[] = [
     user_phone: "+91 9812345678",
     city: "Chandigarh",
     amount_paid: 500,
+    checked_in: false,
     events: [],
   },
   {
@@ -78,6 +85,7 @@ const fakeEntries: Entry[] = [
     user_phone: "+91 9765432109",
     city: "Chandigarh",
     amount_paid: 1100,
+    checked_in: false,
     events: [],
   },
   {
@@ -87,34 +95,83 @@ const fakeEntries: Entry[] = [
     user_phone: "+91 9345678123",
     city: "Chandigarh",
     amount_paid: 500,
+    checked_in: false,
     events: [],
   },
 ]
 
-export function TableData({ items }: { items: Entry[] }) {
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
+
+export function TableData({ items, setItems }: { items: Entry[]; setItems: Dispatch<SetStateAction<Entry[]>> }) {
+  const [modalUID, setModalUID] = useState("");
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Name</TableHead>
-          <TableHead>Email</TableHead>
-          <TableHead>Phone Number</TableHead>
-          <TableHead>City</TableHead>
-          <TableHead className="text-right">Accommodation Type</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {items.map((item) => (
-          <TableRow key={item.user_email + item.user_phone}>
-            <TableCell className="font-medium">{item.user_name}</TableCell>
-            <TableCell>{item.user_email}</TableCell>
-            <TableCell>{item.user_phone}</TableCell>
-            <TableCell>{item.city}</TableCell>
-            <TableCell className="text-right">{item.amount_paid.toString()}</TableCell>
-          </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+    <AlertDialog>
+      <AlertDialogTrigger asChild>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Check In Status</TableHead>
+              <TableHead>S. No.</TableHead>
+              <TableHead>Name</TableHead>
+              <TableHead>Email</TableHead>
+              <TableHead>Phone Number</TableHead>
+              <TableHead>City</TableHead>
+              <TableHead className="text-right">Accommodation Type</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {items.map((item, i) => (
+              <TableRow key={i}>
+                <TableCell><Button onClick={() => {
+                  setModalUID(item.uid);
+                }} className={cn("cursor-pointer", item.checked_in ? "bg-green-500" : "")} disabled={item.checked_in}>{
+                  item.checked_in ? "Checked In" : "Check In"
+                }</Button></TableCell>
+                <TableCell>{i}</TableCell>
+                <TableCell className="font-medium">{item.user_name}</TableCell>
+                <TableCell>{item.user_email}</TableCell>
+                <TableCell>{item.user_phone}</TableCell>
+                <TableCell>{item.city}</TableCell>
+                <TableCell className="text-right">{item.amount_paid.toString()}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Are you absolutely sure you want to check in?</AlertDialogTitle>
+          <AlertDialogDescription>
+            This action cannot be undone.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction onClick={() => {
+              fetch('/api/lhs/checkin', {
+                method: "POST",
+                body: JSON.stringify({ uid: modalUID })
+              }).then(() => {
+                const clone = [...items];
+                clone.map((item) => {
+                  if (item.uid == modalUID) item.checked_in = true;
+                });
+                setItems(clone);
+              }).catch(() => toast('Failed to check in'));
+          }}>Continue</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   )
 }
 
@@ -152,15 +209,27 @@ function Protected({
     });
   }, [search, entries]);
 
+  const numberOfCheckedInUsers = useMemo(() => {
+    let count = 0;
+    for (let i = 0; i < entries.length; i++) {
+      if (entries[i].checked_in) count++;
+    }
+    return count;
+  }, [entries]);
+
   return <div>
     <Header />
     <div className="w-[80vw] m-auto mt-32 mb-32">
+      <div className="flex flex-col space-between w-full p-4 text-muted-foreground">
+      <div>Number of Checked In Users: {numberOfCheckedInUsers}</div>
+      <div>Number of Users who paid for accommodation: {entries.length}</div>
+      </div>
       <Input
         placeholder="Search..."
         value={search}
         onChange={(e) => setSearch(e.target.value.toLowerCase())}
       />
-      <TableData items={filteredEntries} />
+      <TableData items={filteredEntries} setItems={setEntries} />
     </div>
     <Footer />
   </div>;

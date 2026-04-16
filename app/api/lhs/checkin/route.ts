@@ -6,28 +6,27 @@ function getBackendUrl(): string {
 
 export async function POST(request: NextRequest) {
   const data = await request.json();
-  if (!data.password) {
-    console.log(1, data)
+  if (!data.uid) {
     return NextResponse.json({}, { status: 400 });
   }
+
   try {
-    const backendResponse = await fetch(`${getBackendUrl()}/lhs`, {
-      method: "GET",
+    const backendResponse = await fetch(`${getBackendUrl()}/lhs/checkin`, {
+      method: "POST",
       headers: {
         'X-LHS-Key': data.password
       },
+      body: JSON.stringify({ uid: data.uid }),
     });
 
-    const backendData = await backendResponse.json().catch(() => ({}));
     if (backendResponse.ok) {
-      console.log(backendData)
-      return NextResponse.json(backendData.transactions, { status: 200 });
+      return NextResponse.json({}, { status: 200 });
     }
 
-    console.log('[LHS] Not OK')
+    console.log('[LHS - Checkin] Not OK')
     return NextResponse.json({}, { status: 400 });
   } catch (error) {
-    console.error('[LHS] Error fetching:', error);
+    console.error('[LHS - Checkin] Error fetching:', error);
     return NextResponse.json({}, { status: 400 });
   }
 }
