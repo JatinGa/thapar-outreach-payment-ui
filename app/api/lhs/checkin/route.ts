@@ -6,7 +6,7 @@ function getBackendUrl(): string {
 
 export async function POST(request: NextRequest) {
   const data = await request.json();
-  if (!data.uid) {
+  if (!data.uid || !data.password) {
     return NextResponse.json({}, { status: 400 });
   }
 
@@ -14,11 +14,13 @@ export async function POST(request: NextRequest) {
     const backendResponse = await fetch(`${getBackendUrl()}/lhs/checkin`, {
       method: "POST",
       headers: {
-        'X-LHS-Key': data.password
+        'X-LHS-Key': data.password,
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({ uid: data.uid }),
     });
 
+    console.log(await backendResponse.json());
     if (backendResponse.ok) {
       return NextResponse.json({}, { status: 200 });
     }

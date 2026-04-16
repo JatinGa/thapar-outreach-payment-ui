@@ -112,7 +112,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 
-export function TableData({ items, setItems }: { items: Entry[]; setItems: Dispatch<SetStateAction<Entry[]>> }) {
+export function TableData({ password, items, setItems }: { password: string; items: Entry[]; setItems: Dispatch<SetStateAction<Entry[]>> }) {
   const [modalUID, setModalUID] = useState("");
   return (
     <AlertDialog>
@@ -160,7 +160,7 @@ export function TableData({ items, setItems }: { items: Entry[]; setItems: Dispa
           <AlertDialogAction onClick={() => {
               fetch('/api/lhs/checkin', {
                 method: "POST",
-                body: JSON.stringify({ uid: modalUID })
+                body: JSON.stringify({ uid: modalUID, password })
               }).then(() => {
                 const clone = [...items];
                 clone.map((item) => {
@@ -229,7 +229,7 @@ function Protected({
         value={search}
         onChange={(e) => setSearch(e.target.value.toLowerCase())}
       />
-      <TableData items={filteredEntries} setItems={setEntries} />
+      <TableData items={filteredEntries} setItems={setEntries} password={password} />
     </div>
     <Footer />
   </div>;
