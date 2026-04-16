@@ -111,9 +111,11 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import { Toaster } from "@/components/ui/toaster";
 
 export function TableData({ password, items, setItems }: { password: string; items: Entry[]; setItems: Dispatch<SetStateAction<Entry[]>> }) {
   const [modalUID, setModalUID] = useState("");
+  const [mode, setMode] = useState<"checkin" | "checkout">("checkin");
   return (
     <AlertDialog>
       <AlertDialogTrigger asChild>
@@ -131,12 +133,14 @@ export function TableData({ password, items, setItems }: { password: string; ite
             </TableRow>
           </TableHeader>
           <TableBody>
-            {items.map((item, i) => (
-              <TableRow key={i}>
-                <TableCell><Button onClick={() => {
+            {items.map((item, i) => {
+              function Interact() {
                   setModalUID(item.uid);
-                }} className={cn("cursor-pointer", item.checked_in ? "bg-green-500" : "")} disabled={item.checked_in}>{
-                  item.checked_in ? "Checked In" : "Check In"
+                  setMode(item.checked_in ? 'checkout' : 'checkin');
+              }
+              return <TableRow key={i} onClick={Interact}>
+                <TableCell><Button className={cn("cursor-pointer", item.checked_in ? "" : "bg-yellow-500")} onClick={Interact}>{
+                  item.checked_in ? "Check Out" : "Check In"
                 }</Button></TableCell>
                 <TableCell>{i}</TableCell>
                 <TableCell className="font-medium">{item.user_name}</TableCell>
@@ -146,13 +150,13 @@ export function TableData({ password, items, setItems }: { password: string; ite
                 <TableCell>{item.events.join(', ')}</TableCell>
                 <TableCell className="text-right">{item.amount_paid.toString()}</TableCell>
               </TableRow>
-            ))}
+            })}
           </TableBody>
         </Table>
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Are you absolutely sure you want to check in?</AlertDialogTitle>
+          <AlertDialogTitle>Are you absolutely sure you want to {mode == 'checkin' ? 'check in' : 'check out'}?</AlertDialogTitle>
           <AlertDialogDescription>
             This action cannot be undone.
           </AlertDialogDescription>
@@ -160,13 +164,20 @@ export function TableData({ password, items, setItems }: { password: string; ite
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>
           <AlertDialogAction onClick={() => {
-              fetch('/api/lhs/checkin', {
+              fetch(`/api/lhs/${mode}`, {
                 method: "POST",
                 body: JSON.stringify({ uid: modalUID, password })
-              }).then(() => {
+              })
+              .then(response => {
+                if (!response.ok) { // check if 200-299
+                  throw new Error('Network response was not ok'); // Trigger catch()
+                }
+                return response.json();
+              })
+              .then(() => {
                 const clone = [...items];
                 clone.map((item) => {
-                  if (item.uid == modalUID) item.checked_in = true;
+                  if (item.uid == modalUID) item.checked_in = !item.checked_in;
                 });
                 setItems(clone);
               }).catch(() => toast('Failed to check in'));
@@ -242,8 +253,22 @@ export default function Page() {
   const [passwordSubmitted, setPasswordSubmitted] = useState(localStorage.getItem("password") != null)
 
   async function verifyPassword() {
-    localStorage.setItem("password", password);
-    setPasswordSubmitted(true);
+    fetch('/api/lhs/checkpassword', {
+      method: "POST",
+      body: JSON.stringify({ password })
+    })
+    .then(response => {
+      if (!response.ok) { // check if 200-299
+        throw new Error('Network response was not ok'); // Trigger catch()
+      }
+      return response.json();
+    })
+    .then(() => {
+      localStorage.setItem("password", password);
+      setPasswordSubmitted(true);
+    }).catch(() => {
+      alert('Incorrect Password')
+    })
   }
 
   if (passwordSubmitted) {
